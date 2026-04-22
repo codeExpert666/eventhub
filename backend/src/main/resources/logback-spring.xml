@@ -1,15 +1,82 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Spring Boot Logback 日志配置。
+  文件名使用 logback-spring.xml 而不是 logback.xml，
+  是因为前者会由 Spring Boot 以“可感知 Spring 上下文”的方式加载，
+  后续如果需要引入 <springProfile>、<springProperty> 等 Spring 扩展能力，也可以继续在这里演进。
+
+  当前配置目标比较明确：
+  1. 统一定义控制台日志输出格式；
+  2. 在日志中打印 requestId，便于串联一次请求的全链路日志；
+  3. 仅保留控制台输出，先满足当前学习型项目的本地开发、测试和基础部署需要。
+-->
 <configuration>
+    <!--
+      控制台日志格式模板。
+      这里先抽成 property，便于多个 appender 复用，避免将来调整格式时需要重复修改。
+
+      当前各片段含义如下：
+      1. %d{yyyy-MM-dd HH:mm:ss.SSS}
+         输出精确到毫秒的时间戳，便于定位问题发生时刻与排序日志。
+      2. %-5level
+         输出固定宽度的日志级别，例如 INFO / WARN / ERROR，方便肉眼对齐阅读。
+      3. [%thread]
+         输出当前线程名，便于排查线程池、异步任务或并发请求问题。
+      4. [%X{requestId:-N/A}]
+         从 MDC 中读取 requestId。
+         这里的 requestId 由 RequestIdFilter 在请求进入系统时写入 MDC，
+         这样同一次 HTTP 请求产生的日志就能带上统一追踪标识。
+         如果当前日志不在 Web 请求上下文中，或 MDC 中没有该值，就回退显示 N/A。
+      5. %logger{36}
+         输出日志器名称（通常是类全名），并限制最大长度为 36，避免日志行过长。
+      6. - %msg%n
+         输出日志正文并换行，保证每条日志占据独立一行。
+    -->
     <property name="CONSOLE_LOG_PATTERN"
               value="%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%thread] [%X{requestId:-N/A}] %logger{36} - %msg%n"/>
 
+    <!--
+      控制台输出器。
+      这里的 class="ch.qos.logback.core.ConsoleAppender" 表示：
+      Logback 在解析这段 XML 时，会实例化一个内置的 ConsoleAppender 类作为日志输出器。
+      这个类不是当前项目自己编写的业务类，而是 Logback 框架提供的标准组件，
+      作用是把日志事件写到标准输出 / 标准错误对应的控制台流中。
+
+      之所以写成完整类名（全限定类名），是因为 Logback 的 XML 配置本质上是在声明：
+      “这一段 appender 节点要使用哪一个具体的 Java 类来承载输出逻辑”。
+      当前选择 ConsoleAppender，意味着日志会直接打印到控制台；
+      如果后续改成文件输出、滚动文件输出或远程日志输出，通常也会在这里替换成别的 appender 实现类。
+
+      当前项目暂时没有接入文件滚动、集中日志平台或异步日志队列，
+      因此先统一把日志输出到标准输出，便于本地开发、容器日志采集和 CI 观察。
+    -->
     <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <!--
+          编码器负责把日志事件格式化成最终输出文本。
+          这里引用上面的统一 pattern，并显式指定 UTF-8，避免中文日志出现乱码。
+        -->
         <encoder>
             <pattern>${CONSOLE_LOG_PATTERN}</pattern>
             <charset>UTF-8</charset>
         </encoder>
     </appender>
 
+    <!--
+      根日志器配置。
+      root 可以理解为整个日志体系的“默认兜底 logger”：
+      当某个包或某个类没有单独声明日志级别或输出目标时，就会回退到这里。
+
+      当前 root=INFO 的含义是：
+      1. 默认输出 INFO / WARN / ERROR；
+      2. 不输出更细粒度的 DEBUG / TRACE，避免基础日志过于噪杂；
+      3. 所有未单独分流的日志都统一输出到 CONSOLE。
+
+      如果后续需要：
+      - 单独提高 com.eventhub 某个包的日志级别；
+      - 将错误日志写入文件；
+      - 按环境切换不同日志策略；
+      都可以在保留 root 兜底规则的前提下继续扩展。
+    -->
     <root level="INFO">
         <appender-ref ref="CONSOLE"/>
     </root>

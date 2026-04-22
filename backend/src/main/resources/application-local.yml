@@ -1,17 +1,57 @@
+# 本地开发环境配置。
+# 该文件只覆盖开发机需要和公共配置不同的部分，默认通过 application.yml 中的
+# spring.profiles.default=local 自动启用。
 spring:
   datasource:
+    # 本地开发使用的 MySQL JDBC 连接串。
+    # 这类 URL 的基本结构可以拆成三部分：
+    # 1. jdbc:mysql://localhost:3306
+    #    表示通过 MySQL JDBC 驱动连接本机 3306 端口上的 MySQL 服务。
+    # 2. /eventhub
+    #    表示默认连接名为 eventhub 的数据库 schema。
+    # 3. ?key=value&key=value...
+    #    表示补充 JDBC 连接参数，用来约束字符集、时区、SSL 和认证细节。
+    #
+    # 当前各参数的含义如下：
+    # 1. useUnicode=true
+    #    告诉驱动按 Unicode 方式处理字符数据，避免中文等非 ASCII 内容出现编码歧义。
+    #    它通常和 characterEncoding 一起使用，确保连接层面的字符处理行为明确。
+    # 2. characterEncoding=utf8
+    #    指定客户端连接使用 UTF-8 编码与数据库通信，降低中文、符号类文本出现乱码的风险。
+    #    这里是 JDBC 驱动侧的连接编码约束，不等同于数据库表本身的字符集定义。
+    # 3. serverTimezone=Asia/Shanghai
+    #    明确告诉驱动数据库服务端时区按 Asia/Shanghai 解释，
+    #    避免驱动在时间字段读写时因为时区推断不一致而出现偏移问题。
+    #    这和 application.yml 中 Jackson 的 time-zone 配置一起，分别作用在“数据库层时间解释”
+    #    与“接口 JSON 序列化”两个环节。
+    # 4. useSSL=false
+    #    表示本地开发连接默认不启用 SSL。
+    #    对单机本地数据库来说通常没有必要启用加密链路，关闭后可以减少本地证书配置成本。
+    #    但这只适合开发环境，不意味着生产环境也应该关闭。
+    # 5. allowPublicKeyRetrieval=true
+    #    允许 MySQL 驱动在某些认证模式下自动向服务端请求公钥，
+    #    主要用于兼容本地 MySQL 8 常见的认证方式，避免首次连接时报公钥获取相关错误。
+    #    它常与 useSSL=false 一起出现在本地开发配置中，用来降低新环境启动门槛。
     url: jdbc:mysql://localhost:3306/eventhub?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+    # 本地开发数据库账号。这里使用固定的示例账号，便于快速启动和联调。
     username: eventhub
+    # 本地开发数据库密码。该值仅用于开发环境，生产环境必须通过外部安全配置注入。
     password: eventhub
+    # 显式声明 MySQL 驱动，避免在多数据源或环境切换时出现驱动推断歧义。
     driver-class-name: com.mysql.cj.jdbc.Driver
   data:
     redis:
+      # 本地 Redis 主机地址。用于缓存、会话扩展或后续消息相关能力的开发联调。
       host: localhost
+      # 本地 Redis 端口，默认使用标准端口 6379。
       port: 6379
+      # 本地 Redis 密码为空，表示默认连接无鉴权实例。
+      # 如果你的本地 Redis 开启了密码，需要在这里或外部配置中覆盖。
       password:
 
 management:
   endpoint:
     health:
+      # 本地环境保留完整健康详情，便于直接查看数据库、Redis 等依赖组件状态。
       show-details: always
       show-components: always

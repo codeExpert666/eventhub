@@ -1,17 +1,56 @@
+# 自动化测试环境配置。
+# 该文件主要服务于 @ActiveProfiles("test") 场景，目标是让测试运行尽量自包含、
+# 可重复，并尽量减少对开发者本机外部依赖的耦合。
 spring:
   datasource:
+    # 测试环境使用 H2 内存数据库，避免执行测试时依赖真实 MySQL。
+    # 这个 JDBC URL 可以拆成两部分理解：
+    # 1. jdbc:h2:mem:eventhub
+    #    - jdbc:h2 表示使用 H2 数据库驱动
+    #    - mem 表示数据库只存在于内存中，不落盘到本地文件
+    #    - eventhub 表示这块内存数据库的名字，当前测试进程里会以这个名字标识该测试库
+    # 2. ;MODE=...;DB_CLOSE_DELAY=...;DATABASE_TO_LOWER=...
+    #    - H2 使用分号拼接数据库参数，而不是像 MySQL JDBC URL 那样使用 ? 和 &
+    #    - 这些参数用于让测试环境更接近生产行为，同时保持测试执行稳定
+    #
+    # 当前各参数的含义如下：
+    # 1. MODE=MySQL
+    #    让 H2 尽量模拟 MySQL 的一部分语法和行为，
+    #    这样 Flyway 脚本、表结构定义和部分 SQL 在测试环境中更容易直接复用。
+    #    它不是“完全等价于 MySQL”，但足以覆盖当前基础工程阶段的大部分测试场景。
+    # 2. DB_CLOSE_DELAY=-1
+    #    默认情况下，H2 在最后一个连接关闭后可能会立即销毁内存数据库。
+    #    这里设置为 -1，表示即使连接暂时全部关闭，也不要立刻清掉这块内存库，
+    #    而是在当前 JVM 生命周期内继续保留，避免测试过程中因为连接切换导致库被意外重建。
+    # 3. DATABASE_TO_LOWER=TRUE
+    #    告诉 H2 在处理数据库对象名时倾向于转成小写，
+    #    用来降低表名、列名在不同数据库大小写处理规则下产生的不一致问题。
+    #    这样可以减少“同一套脚本在 MySQL 和 H2 中因为大小写差异表现不同”的情况。
     url: jdbc:h2:mem:eventhub;MODE=MySQL;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE
+    # H2 默认管理员账号。
     username: sa
+    # H2 内存库默认无密码。
     password:
+    # 显式指定 H2 驱动，确保测试环境数据源创建稳定可预期。
     driver-class-name: org.h2.Driver
   data:
     redis:
+      # 测试配置中仍保留 Redis 连接参数结构，便于相关组件在装配时读取到完整配置。
+      # 如果某些测试需要真实 Redis，可直接使用本地默认地址。
       host: localhost
       port: 6379
   flyway:
+    # 测试环境同样启用 Flyway，确保 SpringBootTest 启动测试上下文时，
+    # 会先按正式迁移链路初始化测试库，而不是绕过迁移脚本直接执行用例。
+    # 这样可以避免一种常见假象：业务测试看起来通过了，
+    # 但真正从空库启动应用或执行版本升级时，db/migration 下的脚本却跑不通。
+    # 换句话说，这里是在尽量保证“测试使用的表结构”与“正式环境由 Flyway 建出来的表结构”保持一致。
+    # 需要注意的是，这类校验更像“先在 H2 测试库上把迁移跑一遍”，
+    # 能尽早发现脚本明显错误，但仍不等于对真实 MySQL 生产环境的完全等价验证。
     enabled: true
 
 management:
   health:
     redis:
+      # 测试阶段默认关闭 Redis 健康检查，避免没有启动 Redis 时因为 Actuator 健康探针导致测试失败。
       enabled: false

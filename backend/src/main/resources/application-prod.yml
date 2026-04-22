@@ -1,17 +1,83 @@
+# 生产环境配置。
+# 生产环境不在仓库中写死真实连接信息，而是统一通过环境变量注入，
+# 这样既更安全，也更符合容器化部署和持续交付场景的配置管理方式。
+#
+# 这里的 ${ENV_NAME} 是 Spring Boot 的属性占位符写法：
+# 1. 应用启动时，Spring 会尝试从操作系统环境变量、启动参数或系统属性中读取同名值。
+# 2. 如果能读到，就用外部注入的值替换占位符。
+# 3. 如果读不到，并且这里又没有提供默认值，应用通常会因为关键配置缺失而启动失败。
+#
+# 对当前项目来说，最常见的注入方式有两类：
+# 1. 容器化部署
+#    由 Docker / Docker Compose / Kubernetes 在启动容器时注入环境变量。
+#    例如如果后续为应用补一个 compose 服务，写法通常会类似：
+#    services:
+#      backend:
+#        image: eventhub-backend:latest
+#        environment:
+#          SPRING_PROFILES_ACTIVE: prod
+#          DB_URL: jdbc:mysql://mysql:3306/eventhub?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+#          DB_USERNAME: eventhub
+#          DB_PASSWORD: your-prod-password
+#          REDIS_HOST: redis
+#          REDIS_PORT: 6379
+#          REDIS_PASSWORD: ""
+#    这里要特别注意：如果应用也运行在容器内，DB_URL 和 REDIS_HOST 通常不能写 localhost，
+#    而应该写容器网络中的服务名，例如本仓库 docker-compose.yml 里的 mysql 和 redis。
+#    因为容器里的 localhost 指向的是“当前应用容器自己”，不是宿主机，也不是别的容器。
+# 2. 非容器化部署
+#    由宿主机的 shell、systemd、CI/CD 启动脚本或 IDE 运行配置注入配置值。
+#    常见写法可以分成 4 类，建议在同一次启动里统一采用其中一种风格：
+#    A. 先 export 环境变量，再启动应用。
+#       适合本地终端、部署脚本或需要多次复用同一组变量的场景：
+#       export SPRING_PROFILES_ACTIVE=prod
+#       export DB_URL='jdbc:mysql://127.0.0.1:3306/eventhub?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true'
+#       export DB_USERNAME='eventhub'
+#       export DB_PASSWORD='your-prod-password'
+#       export REDIS_HOST='127.0.0.1'
+#       export REDIS_PORT='6379'
+#       export REDIS_PASSWORD=''
+#       java -jar backend-0.0.1-SNAPSHOT.jar
+#    B. 单行临时环境变量。
+#       适合只启动一次、不想污染当前 shell 会话环境的场景：
+#       SPRING_PROFILES_ACTIVE=prod DB_URL='jdbc:mysql://127.0.0.1:3306/eventhub?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true' DB_USERNAME='eventhub' DB_PASSWORD='your-prod-password' REDIS_HOST='127.0.0.1' REDIS_PORT='6379' REDIS_PASSWORD='' java -jar backend-0.0.1-SNAPSHOT.jar
+#    C. 使用 JVM 系统属性。
+#       Spring 也会从 -D 传入的系统属性中读取配置：
+#       java -Dspring.profiles.active=prod -DDB_URL='jdbc:mysql://127.0.0.1:3306/eventhub?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true' -DDB_USERNAME='eventhub' -DDB_PASSWORD='your-prod-password' -DREDIS_HOST='127.0.0.1' -DREDIS_PORT='6379' -DREDIS_PASSWORD='' -jar backend-0.0.1-SNAPSHOT.jar
+#    D. 使用 Spring Boot 命令行参数，直接传最终配置项。
+#       这种写法会直接覆盖 Spring 配置，不再依赖 ${DB_URL} 这一层占位符：
+#       java -jar backend-0.0.1-SNAPSHOT.jar --spring.profiles.active=prod --spring.datasource.url='jdbc:mysql://127.0.0.1:3306/eventhub?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true' --spring.datasource.username='eventhub' --spring.datasource.password='your-prod-password' --spring.data.redis.host='127.0.0.1' --spring.data.redis.port='6379' --spring.data.redis.password=''
 spring:
   datasource:
+    # 生产数据库地址，必须由部署环境显式提供。
+    # 不设置默认值是为了让应用在关键配置缺失时快速失败，而不是误连到错误环境。
+    # 容器化部署时，通常由容器编排平台通过环境变量 DB_URL 注入。
+    # 非容器化部署时，可以通过 export DB_URL=...、单行环境变量、
+    # java -DDB_URL=...，或者直接传 --spring.datasource.url=... 这几种方式提供。
     url: ${DB_URL}
+    # 生产数据库用户名，必须由部署环境提供。
     username: ${DB_USERNAME}
+    # 生产数据库密码，必须由部署环境提供。
     password: ${DB_PASSWORD}
+    # 生产环境仍显式固定 MySQL 驱动，保证数据源初始化行为清晰可控。
     driver-class-name: com.mysql.cj.jdbc.Driver
   data:
     redis:
+      # 生产 Redis 主机地址，必须由部署环境提供。
+      # 如果应用运行在容器里，通常应写 Redis 服务名，例如 redis；
+      # 如果应用直接运行在宿主机上，则通常写 127.0.0.1、内网 IP 或独立 Redis 主机域名。
       host: ${REDIS_HOST}
+      # Redis 端口允许使用 6379 作为默认值，方便与多数标准部署保持一致。
+      # 这里的 ${REDIS_PORT:6379} 表示：如果外部没有注入 REDIS_PORT，就回退到 6379。
       port: ${REDIS_PORT:6379}
+      # Redis 密码允许为空，兼容未开启鉴权的部署环境；如启用鉴权则由环境变量覆盖。
+      # 写成 ${REDIS_PASSWORD:} 表示默认值是空字符串，而不是必须强制提供该变量。
       password: ${REDIS_PASSWORD:}
 
 management:
   endpoint:
     health:
+      # 生产环境不返回健康详情与组件细节，避免暴露内部依赖信息。
+      # 生产排障应优先依赖受控的日志、监控与内部运维接口。
       show-details: never
       show-components: never

@@ -1,42 +1,117 @@
+# 项目公共基础配置。
+# 这里放所有环境都共享的默认值，具体到本地开发、测试、生产的差异项，
+# 再分别由 application-local.yml / application-test.yml / application-prod.yml 覆盖。
 spring:
   application:
+    # Spring 应用名，会参与日志、Actuator 信息以及后续可能接入的注册发现标识。
     name: eventhub-backend
   profiles:
+    # 当外部没有显式指定 spring.profiles.active 时，默认启用 local，
+    # 这样本地直接启动应用即可自动读取 application-local.yml。
     default: local
   jackson:
+    # Jackson 是 Spring Boot 默认使用的 JSON 序列化 / 反序列化组件。
+    # 这里的配置会作用到全局 ObjectMapper，从而统一影响控制器响应体输出、
+    # 请求体解析以及日志、测试中复用到的 JSON 时间格式行为。
+    # 统一全局时间序列化时区，避免 LocalDateTime / OffsetDateTime 在接口输出时出现环境差异。
     time-zone: Asia/Shanghai
     serialization:
+      # 关闭时间戳序列化，统一输出更易读、也更适合前后端联调的 ISO-8601 风格时间字符串。
+      # 如果保持默认时间戳格式，前端往往还需要额外约定“秒 / 毫秒单位”以及时区解释方式，
+      # 对学习型项目来说可读性和调试体验都不如直接输出标准时间字符串。
       write-dates-as-timestamps: false
   datasource:
     hikari:
+      # HikariCP 是 Spring Boot 默认集成的高性能 JDBC 连接池实现。
+      # 这一层配置控制的不是数据库本身，而是“应用如何复用数据库连接”。
+      # 合理的连接池参数可以在吞吐、资源占用和故障暴露速度之间取得平衡。
+      # 数据库连接池的最大连接数。
+      # 当前项目体量较小，先采用保守配置，既避免连接数过高，也能支撑基础并发访问。
       maximum-pool-size: 10
+      # 连接池中保持的最小空闲连接数。
+      # 这样可以减少低流量场景下频繁建连带来的开销，同时避免长时间占用过多连接。
       minimum-idle: 2
+      # 获取数据库连接的超时时间，超过该时间仍拿不到连接时快速失败，
+      # 便于尽早暴露数据库不可用或连接池耗尽问题。
+      # 这个值与 maximum-pool-size 一起决定了高峰期请求是在短时间排队后失败，
+      # 还是长时间阻塞等待连接；当前 3000ms 更偏向尽快发现问题。
       connection-timeout: 3000
   data:
     redis:
+      # Redis 命令超时时间。
+      # 统一放在公共配置中，避免网络异常时请求长时间阻塞。
       timeout: 3s
   flyway:
+    # 启用 Flyway 数据库迁移。
+    # 这个项目在 backend/pom.xml 中已经引入了 flyway-core 和 flyway-mysql 依赖，
+    # 因此 Spring Boot 启动时会自动创建 Flyway 相关 Bean，并在应用真正对外提供服务前，
+    # 先检查数据库中哪些版本脚本还没有执行，然后按版本顺序执行迁移。
+    # 也就是说，这里的 enabled=true 不是“手动触发一次脚本”，而是把“应用启动前自动校验并迁移库结构”
+    # 这条链路显式打开，确保代码、表结构和初始化数据能一起演进。
     enabled: true
+    # 指定 Flyway 扫描迁移脚本的位置。
+    # 这里的 classpath 可以理解为“应用启动后 JVM 能直接加载到的资源根路径”。
+    # 在当前项目中，backend/src/main/resources 会被打进应用运行时的 classpath 根目录，
+    # 因此 classpath:db/migration 实际就对应仓库里的
+    # backend/src/main/resources/db/migration 目录。
+    # 例如当前已有的初始化脚本是：
+    # backend/src/main/resources/db/migration/V1__init_backend_foundation.sql
+    # 当应用启动时，Flyway 会从这个目录读取符合命名规范的脚本，
+    # 并结合数据库中的 flyway_schema_history 记录判断哪些脚本需要执行。
     locations: classpath:db/migration
 
 server:
+  # 后端服务默认端口。
+  # 如部署环境需要不同端口，可通过外部配置覆盖。
   port: 8080
 
 management:
+  # management 用来配置 Spring Boot Actuator 的运维 / 观测端点。
+  # 这些端点不是业务 API，而是给健康检查、运行信息、监控接入和排障使用的辅助入口。
+  # 当前项目已经在 backend/pom.xml 中引入了 spring-boot-starter-actuator，
+  # 因此应用启动后会自动提供一组管理端点。
+  # 由于这里没有单独配置 management.server.port 或 management.endpoints.web.base-path，
+  # 所以这些端点默认仍挂在业务服务同一个端口下，并使用 Spring Boot 默认前缀 /actuator。
+  # 例如当前配置下，健康检查入口就是 /actuator/health，应用信息入口就是 /actuator/info。
   endpoints:
     web:
       exposure:
+        # 控制“哪些 Actuator 端点允许通过 HTTP 对外暴露”。
+        # include=health,info 表示当前只开放最基础、最常用的两个端点：
+        # 1. health: 用于判断应用及其依赖组件是否处于可用状态
+        # 2. info: 用于承载应用版本、描述、构建信息等补充元数据
+        # 其余端点即使在 Actuator 中存在，也不会默认通过 Web 访问到，
+        # 这样可以减少误暴露过多内部运行信息带来的安全和维护成本。
         include: health,info
   endpoint:
     health:
+      # 控制 /actuator/health 返回中“是否展示详细信息”。
+      # always 表示无论谁访问，都返回比 UP / DOWN 更丰富的内容，
+      # 例如数据库、Redis 等健康检查项的状态详情。
+      # 这对本地开发和联调很有帮助，因为能直接看出是哪个依赖组件异常。
+      # 生产环境会在 application-prod.yml 中覆盖为 never，避免把内部依赖状态暴露给外部调用方。
       show-details: always
+      # 控制 /actuator/health 返回中“是否展示组件树结构”。
+      # always 表示响应体中会包含 components 节点，把 db、redis 等子组件分别列出来，
+      # 便于快速定位到底是应用本身异常，还是某个下游基础设施异常。
+      # 如果关闭该选项，健康检查通常只保留更概括的整体状态，不再展开内部组件明细。
       show-components: always
 
 springdoc:
   swagger-ui:
+    # 固定 Swagger UI 访问路径，便于 README、联调文档和浏览器访问入口保持一致。
     path: /swagger-ui.html
 
 logging:
   level:
+    # root 表示“整个应用日志体系的默认兜底级别”。
+    # 当某个类或某个包没有单独配置日志级别时，就会回退使用 root 的设置。
+    # 这里设置为 INFO，意味着 Spring、本地未单独指定的第三方依赖以及其他业务包，
+    # 默认只输出 INFO / WARN / ERROR，不输出更细粒度的 DEBUG / TRACE。
+    # 这样可以避免启动日志和运行日志过于噪杂，同时保留关键运行信息。
     root: INFO
+    # com.eventhub 是项目主包路径，对它单独配置后，会优先于 root 生效。
+    # 当前同样设为 INFO，表示项目代码与全局默认保持一致；
+    # 如果后续需要重点排查业务问题，可以只把 com.eventhub 调成 DEBUG，
+    # 而不必连带放大所有第三方组件日志。
     com.eventhub: INFO
