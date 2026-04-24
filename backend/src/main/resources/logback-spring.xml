@@ -23,7 +23,7 @@
       3. [%thread]
          输出当前线程名，便于排查线程池、异步任务或并发请求问题。
       4. [%X{requestId:-N/A}]
-         从 MDC 中读取 requestId。
+         %X{key} 用于从 MDC 中读取 requestId。
          这里的 requestId 由 RequestIdFilter 在请求进入系统时写入 MDC，
          这样同一次 HTTP 请求产生的日志就能带上统一追踪标识。
          如果当前日志不在 Web 请求上下文中，或 MDC 中没有该值，就回退显示 N/A。
