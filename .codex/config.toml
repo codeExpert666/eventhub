@@ -3,7 +3,7 @@
 # - 该文件只有在项目被信任时才会生效
 # - 这里只保留最小必要配置，避免过度复杂
 
-model = "gpt-5.4"
+model = "gpt-5.5"
 model_reasoning_effort = "xhigh"
 personality = "pragmatic"
 
