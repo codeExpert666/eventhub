@@ -1,6 +1,7 @@
 # 项目公共基础配置。
-# 这里放所有环境都共享的默认值，具体到本地开发、测试、生产的差异项，
-# 再分别由 application-local.yml / application-test.yml / application-prod.yml 覆盖。
+# 这里放所有环境都共享的默认值，具体到本地开发、生产的差异项，
+# 由 src/main/resources 下的 application-local.yml / application-prod.yml 覆盖。
+# 自动化测试使用 src/test/resources/application-test.yml，避免测试专用 H2 依赖进入正式运行 classpath。
 spring:
   application:
     # Spring 应用名，会参与日志、Actuator 信息以及后续可能接入的注册发现标识。

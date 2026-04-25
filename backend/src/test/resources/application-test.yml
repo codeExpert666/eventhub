@@ -1,6 +1,11 @@
 # 自动化测试环境配置。
 # 该文件主要服务于 @ActiveProfiles("test") 场景，目标是让测试运行尽量自包含、
 # 可重复，并尽量减少对开发者本机外部依赖的耦合。
+#
+# 注意：该文件放在 src/test/resources，而不是 src/main/resources。
+# 原因是当前 H2 依赖在 backend/pom.xml 中声明为 test scope，只会进入测试编译和测试运行 classpath。
+# 如果把 test profile 配置放在 main resources，IDEA 会按主运行 classpath 解析 driver-class-name，
+# 从而提示 org.h2.Driver 无法解析；放到 test resources 后，配置文件和 H2 依赖处在同一个测试 classpath 中。
 spring:
   datasource:
     # 测试环境使用 H2 内存数据库，避免执行测试时依赖真实 MySQL。
@@ -32,6 +37,7 @@ spring:
     # H2 内存库默认无密码。
     password:
     # 显式指定 H2 驱动，确保测试环境数据源创建稳定可预期。
+    # 由于本文件位于 src/test/resources，IDEA 和 Maven 都会使用 test scope 中的 com.h2database:h2 解析该类。
     driver-class-name: org.h2.Driver
   data:
     redis:
