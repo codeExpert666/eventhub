@@ -1,40 +1,123 @@
+# Docker Compose 用来把本地开发依赖的多个容器统一编排起来。
+# 这个文件目前只负责启动 eventhub 后端依赖的基础设施：
+# 1. mysql：关系型数据库，保存业务数据。
+# 2. redis：缓存 / 分布式能力的基础组件，后续可用于缓存、限流、幂等等场景。
+#
+# 注意：这里没有定义后端 Spring Boot 应用容器。
+# 本地开发时通常是先用 `docker compose up -d` 启动 MySQL / Redis，
+# 然后在 IDE 或命令行里直接启动后端应用，让后端连接这些本地容器。
 services:
+  # services 下的每一个一级子节点都是一个服务。
+  # 服务名 `mysql` 不只是给人看的名字：
+  # - 在同一个 Compose 网络内，其他容器可以通过主机名 `mysql` 访问它。
+  # - 当前文件没有后端容器，所以本机运行的后端通常通过 localhost:3306 连接它。
   mysql:
+    # image 指定容器使用哪个镜像。
+    # mysql:8.4 表示使用 Docker Hub 上官方 MySQL 镜像的 8.4 标签。
     image: mysql:8.4
+
+    # container_name 指定实际创建出来的容器名称。
+    # 不写时 Compose 会按 “目录名-服务名-序号” 自动生成；
+    # 写固定名称的好处是本地排查时更容易通过 `docker ps` / `docker logs` 找到它。
     container_name: eventhub-mysql
+
+    # environment 会把环境变量注入到容器内部。
+    # MySQL 官方镜像会在首次初始化数据目录时读取这些变量，
+    # 自动创建 root 密码、业务数据库、业务用户和业务用户密码。
     environment:
+      # root 用户是 MySQL 的超级管理员。
+      # 这里的 root/root 只适合本地开发环境，生产环境必须换成强密码或通过密钥系统注入。
       MYSQL_ROOT_PASSWORD: root
+
+      # 首次启动且数据目录为空时，MySQL 镜像会自动创建名为 eventhub 的数据库。
+      # 后端应用的 Flyway 迁移脚本会在这个数据库里创建业务表。
       MYSQL_DATABASE: eventhub
+
+      # 创建一个普通业务用户，后端应用应优先使用该用户连接数据库，
+      # 避免日常业务连接直接使用 root 超级管理员权限。
       MYSQL_USER: eventhub
+
+      # eventhub 用户的密码。
+      # 这里同样是本地开发用的简单密码，不应直接用于生产环境。
       MYSQL_PASSWORD: eventhub
+
+      # 设置容器内时区，保证数据库默认时间、日志时间与项目常用时区一致。
       TZ: Asia/Shanghai
+
+    # command 会覆盖或补充镜像默认启动命令的参数。
+    # 这里给 MySQL 服务端增加字符集相关参数，避免中文、emoji 等字符存储时出现乱码。
     command:
+      # utf8mb4 是 MySQL 中真正支持完整 Unicode 的字符集。
       - --character-set-server=utf8mb4
+      # utf8mb4_unicode_ci 是对应的排序 / 比较规则，ci 表示大小写不敏感。
       - --collation-server=utf8mb4_unicode_ci
+
+    # ports 用来做端口映射，格式是 "宿主机端口:容器端口"。
+    # 这行表示：本机访问 localhost:3306，会被转发到 MySQL 容器内部的 3306 端口。
     ports:
       - "3306:3306"
+
+    # volumes 用来挂载持久化存储。
+    # MySQL 的数据文件放在容器内 /var/lib/mysql；
+    # 如果不挂载卷，删除容器后数据也会丢失。
     volumes:
+      # mysql_data 是文件底部声明的命名卷，由 Docker 负责管理实际存储位置。
       - mysql_data:/var/lib/mysql
+
+    # healthcheck 定义容器健康检查。
+    # Compose 会定期在容器内执行 test 命令，根据退出码判断服务是否健康。
     healthcheck:
+      # mysqladmin ping 能验证 MySQL 服务是否已经可以响应连接。
+      # 这里使用 root/root，是因为上面初始化变量中配置了 root 密码。
       test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-proot"]
+      # 每隔 10 秒检查一次。
       interval: 10s
+      # 单次检查最多等待 5 秒，超过就认为本次检查失败。
       timeout: 5s
+      # 连续失败 10 次后，Docker 会把容器标记为 unhealthy。
       retries: 10
 
+  # Redis 服务。
+  # 当前项目可以用它承载缓存类能力；如果后续加入分布式锁、幂等令牌、
+  # 热门活动缓存等，也通常会依赖 Redis。
   redis:
+    # 使用 Redis 官方镜像的 7.2 版本。
     image: redis:7.2
+
+    # 固定容器名，便于本地通过 Docker 命令定位 Redis 容器。
     container_name: eventhub-redis
+
+    # Redis 默认数据主要在内存中。
+    # --appendonly yes 开启 AOF 持久化，让 Redis 把写操作追加到磁盘日志里，
+    # 容器重启后可以尽量恢复之前写入的数据。
     command: ["redis-server", "--appendonly", "yes"]
+
+    # 把本机 6379 端口映射到容器内 6379 端口。
+    # 本机运行的后端应用可以通过 localhost:6379 访问这个 Redis。
     ports:
       - "6379:6379"
+
+    # Redis 的持久化文件默认放在容器内 /data。
+    # 挂载命名卷后，删除并重建容器时数据不会立刻随容器一起消失。
     volumes:
       - redis_data:/data
+
+    # Redis 健康检查。
+    # redis-cli ping 正常时会返回 PONG，命令退出码为 0，表示服务可用。
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
+      # 每 10 秒检查一次 Redis 是否可响应。
       interval: 10s
+      # 单次健康检查最多等待 5 秒。
       timeout: 5s
+      # 连续失败 10 次后标记为 unhealthy。
       retries: 10
 
+# 顶层 volumes 声明命名卷。
+# 命名卷由 Docker 管理，适合保存数据库、Redis 这类容器重建后仍希望保留的数据。
 volumes:
+  # MySQL 数据卷，对应上方 mysql 服务中的 mysql_data:/var/lib/mysql。
   mysql_data:
+
+  # Redis 数据卷，对应上方 redis 服务中的 redis_data:/data。
   redis_data:
