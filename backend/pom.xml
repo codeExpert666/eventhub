@@ -2,73 +2,158 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <!--
+        Maven POM 模型版本。
+        4.0.0 是 Maven 2 之后长期使用的标准模型版本，表示当前文件遵循 Maven 的项目对象模型规范。
+    -->
     <modelVersion>4.0.0</modelVersion>
 
+    <!--
+        继承 Spring Boot 官方父工程。
+        starter-parent 会统一管理 Spring Boot 生态依赖版本、插件默认配置、资源过滤和测试插件等常见构建行为。
+        本项目只在确有必要时显式覆盖第三方版本，避免每个依赖都手动指定版本造成兼容性漂移。
+    -->
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
         <version>3.3.2</version>
+        <!--
+            relativePath 置空表示不从当前仓库的相对路径寻找父 POM，而是直接使用 Maven 仓库中的 Spring Boot 父工程。
+            这样当前 backend 模块可以作为独立 Spring Boot 应用构建，不依赖仓库根目录必须存在父工程。
+        -->
         <relativePath/>
     </parent>
 
+    <!--
+        当前后端应用自身的 Maven 坐标。
+        groupId 标识组织或项目命名空间，artifactId 标识产物名称，version 标识当前快照版本。
+        这些坐标会共同决定构建产物在本地仓库或远程仓库中的唯一身份。
+    -->
     <groupId>com.eventhub</groupId>
     <artifactId>backend</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <name>eventhub-backend</name>
     <description>EventHub monolith backend foundation</description>
 
+    <!--
+        统一声明构建过程中会复用的版本属性。
+        java.version 会被 Spring Boot Maven 插件和编译插件读取，用来保证源码、字节码和运行时基线一致。
+        springdoc 与 flyway 当前显式使用属性管理，便于后续升级时只改一个位置并集中评估兼容性。
+    -->
     <properties>
+        <!-- Spring Boot 3.x 要求 Java 17+，这里固定为 17，兼顾现代语言特性与部署环境普遍兼容性。 -->
         <java.version>17</java.version>
+        <!-- Springdoc 用于生成 OpenAPI 文档和 Swagger UI，独立声明版本避免和业务依赖混在一起。 -->
         <springdoc.version>2.6.0</springdoc.version>
+        <!-- Flyway 负责数据库迁移，core 与 MySQL 扩展使用同一版本，减少迁移引擎内部模块不一致的风险。 -->
         <flyway.version>10.10.0</flyway.version>
     </properties>
 
+    <!--
+        应用运行与测试所需依赖。
+        这里保持最小后端闭环：Web 接口、参数校验、健康观测、关系型数据库访问、Redis、接口文档和数据库迁移。
+        没有业务收益的重量级依赖暂不引入，方便学习阶段理解每个组件的职责边界。
+    -->
     <dependencies>
+        <!--
+            Web 层基础依赖。
+            提供 Spring MVC、内嵌 Tomcat、JSON 序列化与常见 HTTP 请求处理能力，是 REST API 的入口基础。
+        -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
+
+        <!--
+            参数校验依赖。
+            支持在 DTO、请求体和方法参数上使用 @Valid、@NotBlank、@Size 等 Bean Validation 注解，
+            让非法请求尽早在 Controller 边界被拦截，而不是流入业务逻辑后再手写判断。
+        -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-validation</artifactId>
         </dependency>
+
+        <!--
+            可观测性与运维端点依赖。
+            提供 health、info、metrics 等 Actuator 能力，便于本地调试、部署探活和后续接入监控体系。
+        -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
+
+        <!--
+            JDBC 数据访问基础依赖。
+            提供 DataSource、事务管理、JdbcTemplate 等能力，适合当前阶段保持数据访问链路清晰可控。
+        -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-jdbc</artifactId>
         </dependency>
+
+        <!--
+            Redis 访问依赖。
+            为后续缓存、幂等令牌、分布式锁或限流等能力预留基础设施入口；具体使用边界由业务场景决定。
+        -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-redis</artifactId>
         </dependency>
+
+        <!--
+            OpenAPI / Swagger UI 依赖。
+            springdoc 会根据 Controller 注解和请求响应模型生成接口文档，方便学习、联调和演示接口契约。
+        -->
         <dependency>
             <groupId>org.springdoc</groupId>
             <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
             <version>${springdoc.version}</version>
         </dependency>
+
+        <!--
+            Flyway 核心迁移引擎。
+            应用启动时会根据 resources/db/migration 下的脚本维护数据库版本，避免手工改库导致环境不一致。
+        -->
         <dependency>
             <groupId>org.flywaydb</groupId>
             <artifactId>flyway-core</artifactId>
             <version>${flyway.version}</version>
         </dependency>
+
+        <!--
+            Flyway 的 MySQL 数据库支持模块。
+            Flyway 10 起将部分数据库支持拆成独立模块；连接 MySQL 时需要该扩展配合 flyway-core 工作。
+        -->
         <dependency>
             <groupId>org.flywaydb</groupId>
             <artifactId>flyway-mysql</artifactId>
             <version>${flyway.version}</version>
         </dependency>
+
+        <!--
+            MySQL JDBC 驱动。
+            Spring Boot 会在配置 DataSource 时通过该驱动连接本地或生产 MySQL 实例，驱动版本由父工程统一管理。
+        -->
         <dependency>
             <groupId>com.mysql</groupId>
             <artifactId>mysql-connector-j</artifactId>
         </dependency>
 
+        <!--
+            测试环境内存数据库。
+            scope=test 表示只在测试编译和测试运行时可用，不会进入生产运行时依赖；适合配合集成测试快速建库和清理数据。
+        -->
         <dependency>
             <groupId>com.h2database</groupId>
             <artifactId>h2</artifactId>
             <scope>test</scope>
         </dependency>
+
+        <!--
+            Spring Boot 测试基础包。
+            包含 JUnit 5、Spring Test、AssertJ、Mockito 等常用测试能力，用于单元测试、Web 层测试和 Spring 上下文集成测试。
+        -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
@@ -76,8 +161,17 @@
         </dependency>
     </dependencies>
 
+    <!--
+        构建配置。
+        当前只保留 Spring Boot 打包插件，让 Maven 能把应用打成可直接运行的 Spring Boot 可执行 Jar。
+    -->
     <build>
         <plugins>
+            <!--
+                Spring Boot Maven 插件。
+                主要负责 repackage：把普通 Jar 重新组织为包含依赖、启动器和应用类的可执行 Jar，
+                后续可以通过 java -jar target/backend-*.jar 启动后端服务。
+            -->
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
