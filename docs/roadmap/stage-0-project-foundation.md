@@ -42,27 +42,13 @@ eventhub
 │   │   │   ├── java/com/eventhub
 │   │   │   │   ├── EventhubApplication.java
 │   │   │   │   ├── common
-│   │   │   │   │   ├── api
-│   │   │   │   │   ├── exception
-│   │   │   │   │   ├── validation
-│   │   │   │   │   ├── security
-│   │   │   │   │   ├── redis
-│   │   │   │   │   └── util
+│   │   │   │   │   ├── api（接口返回格式、分页格式、错误码协议相关的通用类）
+│   │   │   │   │   └── exception（全局异常体系）
 │   │   │   │   ├── modules
-│   │   │   │   │   ├── system
-│   │   │   │   │   ├── auth
-│   │   │   │   │   ├── user
-│   │   │   │   │   ├── event
-│   │   │   │   │   ├── inventory
-│   │   │   │   │   ├── order
-│   │   │   │   │   ├── payment
-│   │   │   │   │   ├── notification
-│   │   │   │   │   └── audit
+│   │   │   │   │   └── system（系统基础能力）
 │   │   │   │   └── infra
-│   │   │   │       ├── config
-│   │   │   │       ├── openapi
-│   │   │   │       ├── persistence
-│   │   │   │       └── scheduler
+│   │   │   │       ├── openapi（OpenAPI / Swagger 文档配置）
+│   │   │   │       └── logging（日志、审计切面、requestId 注入等技术实现）
 │   │   │   └── resources
 │   │   │       ├── application.yml
 │   │   │       ├── application-dev.yml
@@ -86,14 +72,14 @@ eventhub
 └── README.md
 ```
 
-每个具体模块（module）内部的分层结构如下：
+以下是每个模块内部的标准分层，对于 system 模块来说，不涉及的可直接舍弃：
 
 ```text
-modules/{moduleName}
+modules/system
 ├── controller
 ├── service
 │   └── impl（简单 service 可不写接口）
-├── domain（service 逻辑复杂时才考虑此结构）
+├── domain（service 逻辑复杂时才考虑此分层）
 ├── mapper
 ├── entity
 ├── dto
@@ -104,22 +90,6 @@ modules/{moduleName}
 ├── enums
 └── exception
 ```
-
-模块边界如下：
-
-| 模块           | 职责                        |
-|--------------|---------------------------|
-| system       | 系统基础能力                    |
-| auth         | 注册、登录、JWT、鉴权              |
-| user         | 用户资料、角色、账号状态              |
-| event        | 活动、场次、票种管理与查询             |
-| inventory    | 库存扣减、锁定、释放、确认售出           |
-| order        | 订单、订单明细、订单状态机             |
-| payment      | 模拟支付、支付记录、支付回调            |
-| notification | 通知记录、站内通知、异步通知预留          |
-| audit        | 管理员操作日志、业务日志              |
-| common       | 统一响应、异常、校验、工具类            |
-| infra        | Redis、OpenAPI、调度任务、外部依赖配置 |
 
 ### 统一响应体
 
