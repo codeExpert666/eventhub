@@ -27,6 +27,12 @@ public enum ErrorCode {
     BUSINESS_ERROR(HttpStatus.BAD_REQUEST, "COMMON-401", "业务处理失败"),
 
     /**
+     * 请求的资源不存在。
+     * 对应 HTTP 404，常见于访问未定义接口或缺失静态资源，例如浏览器自动请求的 favicon.ico。
+     */
+    NOT_FOUND(HttpStatus.NOT_FOUND, "COMMON-404", "资源不存在"),
+
+    /**
      * 服务端发生未预期异常，调用方通常无法自行恢复。
      * 对应 HTTP 500，用于兜底标识系统内部错误。
      */

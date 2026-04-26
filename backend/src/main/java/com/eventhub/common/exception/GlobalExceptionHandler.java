@@ -14,6 +14,7 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 /**
  * 统一异常处理入口。
@@ -117,6 +118,25 @@ public class GlobalExceptionHandler {
                 null
         );
         return ResponseEntity.status(exception.getErrorCode().getHttpStatus()).body(response);
+    }
+
+    /**
+     * 处理静态资源或路径资源不存在的异常。
+     * 浏览器访问接口文档时通常会额外请求 favicon.ico；如果项目没有提供该静态资源，
+     * Spring MVC 会抛出 NoResourceFoundException。这个场景属于可预期的客户端资源缺失，
+     * 应返回 404，而不是落入未知异常分支并记录成系统内部错误。
+     *
+     * @param exception Spring MVC 在静态资源查找失败时抛出的异常
+     * @return 统一的资源不存在响应
+     */
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<ApiResponse<Void>> handleNoResourceFound(NoResourceFoundException exception) {
+        ApiResponse<Void> response = ApiResponse.failure(
+                ErrorCode.NOT_FOUND,
+                "请求的资源不存在",
+                null
+        );
+        return ResponseEntity.status(ErrorCode.NOT_FOUND.getHttpStatus()).body(response);
     }
 
     /**

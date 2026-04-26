@@ -205,4 +205,23 @@ class SystemControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.paths['/api/v1/system/ping']").exists());
     }
+
+    /**
+     * 验证缺失静态资源会返回统一 404 响应，而不是被当成未知系统异常处理。
+     *
+     * <p>浏览器访问 {@code /v3/api-docs}、Swagger UI 或普通页面时，
+     * 通常会自动额外请求 {@code /favicon.ico}。当前项目没有提供该图标文件，
+     * 所以 Spring MVC 会把它识别为“静态资源不存在”。
+     *
+     * <p>这个测试覆盖的是完整 Web 链路：
+     * 请求进入 MockMvc -> Spring MVC 静态资源处理器查找失败
+     * -> 抛出资源不存在异常 -> 全局异常处理器转换成统一 404 响应。
+     */
+    @Test
+    void missingFaviconShouldReturnUnifiedNotFoundResponse() throws Exception {
+        mockMvc.perform(get("/favicon.ico"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("COMMON-404"))
+                .andExpect(jsonPath("$.message").value("请求的资源不存在"));
+    }
 }
