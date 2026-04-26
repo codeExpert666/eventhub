@@ -37,41 +37,43 @@
 ```text
 eventhub
 ├── backend
-│   └── src
-│       ├── main
-│       │   ├── java/com/eventhub
-│       │   │   ├── EventhubApplication.java
-│       │   │   ├── common
-│       │   │   │   ├── api
-│       │   │   │   ├── exception
-│       │   │   │   ├── validation
-│       │   │   │   ├── security
-│       │   │   │   ├── redis
-│       │   │   │   └── util
-│       │   │   ├── modules
-│       │   │   │   ├── system
-│       │   │   │   ├── auth
-│       │   │   │   ├── user
-│       │   │   │   ├── event
-│       │   │   │   ├── inventory
-│       │   │   │   ├── order
-│       │   │   │   ├── payment
-│       │   │   │   ├── notification
-│       │   │   │   └── audit
-│       │   │   └── infra
-│       │   │       ├── config
-│       │   │       ├── openapi
-│       │   │       ├── persistence
-│       │   │       └── scheduler
-│       │   └── resources
-│       │       ├── application.yml
-│       │       ├── application-dev.yml
-│       │       ├── application-prod.yml
-│       │       └── db/migration
-│       └── test
-│           ├── java
-│           └── resources
-│               └── application-test.yml
+│   ├── src
+│   │   ├── main
+│   │   │   ├── java/com/eventhub
+│   │   │   │   ├── EventhubApplication.java
+│   │   │   │   ├── common
+│   │   │   │   │   ├── api
+│   │   │   │   │   ├── exception
+│   │   │   │   │   ├── validation
+│   │   │   │   │   ├── security
+│   │   │   │   │   ├── redis
+│   │   │   │   │   └── util
+│   │   │   │   ├── modules
+│   │   │   │   │   ├── system
+│   │   │   │   │   ├── auth
+│   │   │   │   │   ├── user
+│   │   │   │   │   ├── event
+│   │   │   │   │   ├── inventory
+│   │   │   │   │   ├── order
+│   │   │   │   │   ├── payment
+│   │   │   │   │   ├── notification
+│   │   │   │   │   └── audit
+│   │   │   │   └── infra
+│   │   │   │       ├── config
+│   │   │   │       ├── openapi
+│   │   │   │       ├── persistence
+│   │   │   │       └── scheduler
+│   │   │   └── resources
+│   │   │       ├── application.yml
+│   │   │       ├── application-dev.yml
+│   │   │       ├── application-prod.yml
+│   │   │       └── db/migration
+│   │   └── test
+│   │       ├── java
+│   │       └── resources
+│   │           └── application-test.yml
+│   ├── Dockerfile
+│   └── pom.xml
 ├── docs
 │   ├── ai
 │   │   ├── design
@@ -80,10 +82,7 @@ eventhub
 │   ├── interview
 │   ├── roadmap
 │   └── templates
-├── docker
 ├── docker-compose.yml
-├── Dockerfile
-├── pom.xml
 └── README.md
 ```
 
@@ -108,19 +107,19 @@ modules/{moduleName}
 
 模块边界如下：
 
-| 模块 | 职责 |
-| --- | --- |
-| system | 系统基础能力 |
-| auth | 注册、登录、JWT、鉴权 |
-| user | 用户资料、角色、账号状态 |
-| event | 活动、场次、票种管理与查询 |
-| inventory | 库存扣减、锁定、释放、确认售出 |
-| order | 订单、订单明细、订单状态机 |
-| payment | 模拟支付、支付记录、支付回调 |
-| notification | 通知记录、站内通知、异步通知预留 |
-| audit | 管理员操作日志、业务日志 |
-| common | 统一响应、异常、校验、工具类 |
-| infra | Redis、OpenAPI、调度任务、外部依赖配置 |
+| 模块           | 职责                        |
+|--------------|---------------------------|
+| system       | 系统基础能力                    |
+| auth         | 注册、登录、JWT、鉴权              |
+| user         | 用户资料、角色、账号状态              |
+| event        | 活动、场次、票种管理与查询             |
+| inventory    | 库存扣减、锁定、释放、确认售出           |
+| order        | 订单、订单明细、订单状态机             |
+| payment      | 模拟支付、支付记录、支付回调            |
+| notification | 通知记录、站内通知、异步通知预留          |
+| audit        | 管理员操作日志、业务日志              |
+| common       | 统一响应、异常、校验、工具类            |
+| infra        | Redis、OpenAPI、调度任务、外部依赖配置 |
 
 ### 统一响应体
 
