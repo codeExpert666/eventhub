@@ -1,6 +1,6 @@
 package com.eventhub.common.exception;
 
-import com.eventhub.common.error.ErrorCode;
+import com.eventhub.common.api.ErrorCode;
 import java.util.Objects;
 
 /**

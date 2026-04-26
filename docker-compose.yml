@@ -1,11 +1,8 @@
 # Docker Compose 用来把本地开发依赖的多个容器统一编排起来。
-# 这个文件目前只负责启动 eventhub 后端依赖的基础设施：
+# 这个文件目前负责启动 eventhub 阶段 0 的本地完整基础闭环：
 # 1. mysql：关系型数据库，保存业务数据。
 # 2. redis：缓存 / 分布式能力的基础组件，后续可用于缓存、限流、幂等等场景。
-#
-# 注意：这里没有定义后端 Spring Boot 应用容器。
-# 本地开发时通常是先用 `docker compose up -d` 启动 MySQL / Redis，
-# 然后在 IDE 或命令行里直接启动后端应用，让后端连接这些本地容器。
+# 3. backend：Spring Boot 后端应用，连接同一个 Compose 网络中的 MySQL / Redis。
 services:
   # services 下的每一个一级子节点都是一个服务。
   # 服务名 `mysql` 不只是给人看的名字：
@@ -112,6 +109,48 @@ services:
       timeout: 5s
       # 连续失败 10 次后标记为 unhealthy。
       retries: 10
+
+  # 后端应用服务。
+  # 阶段 0 的验收目标之一是 `docker compose up -d` 后能同时拉起 MySQL、Redis 和应用，
+  # 因此这里把 Spring Boot 应用也纳入 Compose 编排，而不是只把 Compose 当成依赖容器清单。
+  backend:
+    # 使用 backend/Dockerfile 构建后端镜像。
+    # context 指向 backend 目录后，Dockerfile 中的 COPY pom.xml / COPY src 就会以 backend 为根目录解析。
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+
+    # 固定本地容器名，便于通过 docker logs eventhub-backend 查看应用日志。
+    container_name: eventhub-backend
+
+    # 给本地构建出来的镜像一个明确名称，方便 docker images 中识别。
+    image: eventhub-backend:stage0
+
+    # depends_on 的 condition 会等待依赖容器健康检查通过后，再启动 backend。
+    # 这不能替代应用自己的连接重试策略，但能减少 MySQL/Redis 还没就绪时应用立刻启动失败的概率。
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+    # 这些环境变量会被 application-prod.yml 中的 ${...} 占位符读取。
+    # 容器内访问其他 Compose 服务时，不能写 localhost；
+    # localhost 只代表当前 backend 容器自己，应该使用同一 Compose 网络中的服务名 mysql / redis。
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      DB_URL: "jdbc:mysql://mysql:3306/eventhub?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true"
+      DB_USERNAME: eventhub
+      DB_PASSWORD: eventhub
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ""
+      TZ: Asia/Shanghai
+
+    # 将宿主机 8080 端口映射到容器内 8080 端口。
+    # 启动后可以在本机访问 http://localhost:8080/actuator/health 或 Swagger UI。
+    ports:
+      - "8080:8080"
 
 # 顶层 volumes 声明命名卷。
 # 命名卷由 Docker 管理，适合保存数据库、Redis 这类容器重建后仍希望保留的数据。

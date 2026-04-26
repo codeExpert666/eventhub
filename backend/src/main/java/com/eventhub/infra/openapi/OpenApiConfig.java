@@ -1,4 +1,4 @@
-package com.eventhub.config;
+package com.eventhub.infra.openapi;
 
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.info.Contact;

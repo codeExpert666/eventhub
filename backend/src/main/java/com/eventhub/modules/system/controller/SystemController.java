@@ -1,9 +1,9 @@
 package com.eventhub.modules.system.controller;
 
-import com.eventhub.common.response.ApiResponse;
-import com.eventhub.modules.system.domain.EchoInfo;
-import com.eventhub.modules.system.domain.PingInfo;
-import com.eventhub.modules.system.dto.EchoRequest;
+import com.eventhub.common.api.ApiResponse;
+import com.eventhub.modules.system.dto.request.EchoRequest;
+import com.eventhub.modules.system.vo.EchoInfo;
+import com.eventhub.modules.system.vo.PingInfo;
 import com.eventhub.modules.system.service.SystemService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;

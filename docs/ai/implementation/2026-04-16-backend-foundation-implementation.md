@@ -18,7 +18,7 @@
 - README 启动说明
 
 ## 2. 改动内容
-- 新增了 `backend/` Maven 工程，采用 `common / config / modules.system` 的单体分层结构
+- 新增了 `backend/` Maven 工程，采用 `common / infra / modules.system` 的单体分层结构
 - 新增了统一响应对象 `ApiResponse`、错误码 `ErrorCode`、异常类 `BusinessException`、全局异常处理器 `GlobalExceptionHandler`
 - 新增了 `RequestIdFilter` 与 `logback-spring.xml`，让日志、响应体和响应头共享同一个请求标识
 - 新增了系统示例接口 `GET /api/v1/system/ping` 和 `POST /api/v1/system/echo`

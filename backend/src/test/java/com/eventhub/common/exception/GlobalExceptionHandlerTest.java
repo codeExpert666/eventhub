@@ -4,8 +4,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
-import com.eventhub.common.error.ErrorCode;
-import com.eventhub.common.response.ApiResponse;
+import com.eventhub.common.api.ErrorCode;
+import com.eventhub.common.api.ApiResponse;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
@@ -43,6 +43,29 @@ class GlobalExceptionHandlerTest {
         assertNotNull(body);
         assertEquals(ErrorCode.NOT_FOUND.getCode(), body.code());
         assertEquals("请求的资源不存在", body.message());
+        assertNull(body.data());
+        assertNotNull(body.timestamp());
+    }
+
+    /**
+     * 验证未被具体分支识别的异常会落入统一兜底响应。
+     * <p>
+     * 阶段 0 的验收点要求“未知异常返回统一格式”。这里直接调用处理器方法，
+     * 可以用最小成本锁定兜底契约：HTTP 状态是 500，响应体错误码是 INTERNAL_ERROR，
+     * 且不会把异常堆栈或内部实现细节直接暴露给调用方。
+     * </p>
+     */
+    @Test
+    void unexpectedExceptionShouldReturnUnifiedInternalErrorResponse() {
+        RuntimeException exception = new RuntimeException("simulated unexpected failure");
+
+        ResponseEntity<ApiResponse<Void>> responseEntity = handler.handleUnexpectedException(exception);
+        ApiResponse<Void> body = responseEntity.getBody();
+
+        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, responseEntity.getStatusCode());
+        assertNotNull(body);
+        assertEquals(ErrorCode.INTERNAL_ERROR.getCode(), body.code());
+        assertEquals(ErrorCode.INTERNAL_ERROR.getDefaultMessage(), body.message());
         assertNull(body.data());
         assertNotNull(body.timestamp());
     }

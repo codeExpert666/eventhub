@@ -1,6 +1,6 @@
-package com.eventhub.common.response;
+package com.eventhub.common.api;
 
-import com.eventhub.common.error.ErrorCode;
+import com.eventhub.infra.logging.RequestIdFilter;
 import java.time.OffsetDateTime;
 import org.slf4j.MDC;
 

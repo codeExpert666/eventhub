@@ -1,15 +1,15 @@
 # 项目公共基础配置。
 # 这里放所有环境都共享的默认值，具体到本地开发、生产的差异项，
-# 由 src/main/resources 下的 application-local.yml / application-prod.yml 覆盖。
+# 由 src/main/resources 下的 application-dev.yml / application-prod.yml 覆盖。
 # 自动化测试使用 src/test/resources/application-test.yml，避免测试专用 H2 依赖进入正式运行 classpath。
 spring:
   application:
     # Spring 应用名，会参与日志、Actuator 信息以及后续可能接入的注册发现标识。
     name: eventhub-backend
   profiles:
-    # 当外部没有显式指定 spring.profiles.active 时，默认启用 local，
-    # 这样本地直接启动应用即可自动读取 application-local.yml。
-    default: local
+    # 当外部没有显式指定 spring.profiles.active 时，默认启用 dev，
+    # 这样本地直接启动应用即可自动读取 application-dev.yml。
+    default: dev
   jackson:
     # Jackson 是 Spring Boot 默认使用的 JSON 序列化 / 反序列化组件。
     # 这里的配置会作用到全局 ObjectMapper，从而统一影响控制器响应体输出、

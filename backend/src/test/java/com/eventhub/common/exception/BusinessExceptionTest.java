@@ -4,7 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import com.eventhub.common.error.ErrorCode;
+import com.eventhub.common.api.ErrorCode;
 import org.junit.jupiter.api.Test;
 
 /**

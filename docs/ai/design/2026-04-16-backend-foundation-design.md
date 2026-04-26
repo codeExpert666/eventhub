@@ -24,7 +24,8 @@
 - 涉及模块：
   - `backend/` Maven 工程
   - `common` 公共层
-  - `config` 配置层
+  - `infra.openapi` 接口文档基础设施层
+  - `infra.logging` 日志与请求追踪基础设施层
   - `modules.system` 系统示例模块
   - `infra` 基础设施资源目录
 - 涉及表 / 缓存 / 外部接口：
@@ -38,8 +39,9 @@
   - `ApiResponse<T>`：统一响应包装对象，承载 `code`、`message`、`data`、`requestId`、`timestamp`
   - `ErrorCode`：系统级错误码枚举
   - `BusinessException`：业务/系统自定义异常
-  - `PingInfo`：系统探活返回对象
-  - `EchoRequest` / `EchoInfo`：参数校验与统一异常处理的示例对象
+  - `PingInfo`：系统探活返回 VO
+  - `EchoRequest`：参数校验与统一异常处理的请求 DTO
+  - `EchoInfo`：回显示例返回 VO
   - `SystemBootstrapRecord`：数据库基线记录对象，对应首个基础系统表
 - 实体关系：
   - `SystemController` 调用 `SystemService`

@@ -15,7 +15,7 @@
 - 不引入新的异常层次结构或国际化文案体系。
 
 ## 4. 影响范围
-- 涉及模块：`backend/common/exception`、`backend/common/error`
+- 涉及模块：`backend/common/exception`、`backend/common/api`
 - 表 / 缓存 / 外部接口：无
 - 受影响调用方：后续抛出 `BusinessException` 的业务服务代码
 

@@ -1,10 +1,10 @@
-package com.eventhub.common.response;
+package com.eventhub.common.api;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
-import com.eventhub.common.error.ErrorCode;
+import com.eventhub.infra.logging.RequestIdFilter;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.MDC;

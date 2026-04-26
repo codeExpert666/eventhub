@@ -6,7 +6,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.eventhub.common.response.RequestIdFilter;
+import com.eventhub.infra.logging.RequestIdFilter;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -32,7 +32,7 @@ import org.springframework.test.web.servlet.MockMvc;
  *
  * <p>当前文件优先覆盖的是项目基础工程最重要的几条能力：
  * 统一响应体、请求参数校验、非法 JSON 请求体处理、请求 ID 透传/重建、
- * Actuator 健康检查，以及 OpenAPI 文档是否已成功暴露。
+ * Actuator 健康检查、应用信息端点，以及 OpenAPI 文档是否已成功暴露。
  */
 // 启动完整的 Spring Boot 测试上下文，而不是只创建某一个孤立对象。
 @SpringBootTest
@@ -191,6 +191,18 @@ class SystemControllerTest {
         mockMvc.perform(get("/actuator/health"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("UP"));
+    }
+
+    /**
+     * 验证 Actuator 信息端点是否已经按阶段 0 规划暴露。
+     *
+     * <p>{@code /actuator/info} 主要用于承载应用版本、构建信息或自定义运行说明。
+     * 当前阶段不强制写入具体 info 内容，但端点本身必须可访问，方便后续逐步补充构建元数据。
+     */
+    @Test
+    void infoEndpointShouldBeAvailable() throws Exception {
+        mockMvc.perform(get("/actuator/info"))
+                .andExpect(status().isOk());
     }
 
     /**

@@ -1,4 +1,4 @@
-package com.eventhub.common.error;
+package com.eventhub.common.api;
 
 import org.springframework.http.HttpStatus;
 

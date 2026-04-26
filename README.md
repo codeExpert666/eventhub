@@ -15,16 +15,26 @@
 - OpenAPI 文档
 - Actuator 健康检查
 - 基础日志与 `requestId`
+- Dockerfile 与 Docker Compose 应用容器
 
 ## 目录说明
 
 ```text
 backend/
+  ├── Dockerfile
   ├── pom.xml
   ├── src/main/java/com/eventhub
   │   ├── common
-  │   ├── config
+  │   │   ├── api
+  │   │   └── exception
+  │   ├── infra
+  │   │   ├── logging
+  │   │   └── openapi
   │   └── modules/system
+  │       ├── controller
+  │       ├── dto/request
+  │       ├── service
+  │       └── vo
   ├── src/main/resources
   │   ├── application*.yml
   │   ├── db/migration
@@ -46,33 +56,51 @@ docker-compose.yml
 - Maven 3.9+
 - Docker / Docker Compose
 
-1. 启动基础设施
+1. 启动完整本地环境
 
 ```bash
 docker compose up -d
 ```
 
-2. 启动后端
+该命令会启动 MySQL、Redis 和后端应用容器。首次执行时会构建后端镜像，可能需要等待 Maven 依赖下载完成。
 
-```bash
-cd backend
-mvn spring-boot:run
-```
-
-3. 访问地址
+2. 访问地址
 
 - Swagger UI: `http://localhost:8080/swagger-ui/index.html`
 - OpenAPI JSON: `http://localhost:8080/v3/api-docs`
 - 健康检查: `http://localhost:8080/actuator/health`
+- 应用信息: `http://localhost:8080/actuator/info`
 - 系统探活: `http://localhost:8080/api/v1/system/ping`
 
+如果只想在 Docker 中启动 MySQL / Redis，然后通过 IDE 或 Maven 在本机启动后端，可以执行：
+
+```bash
+docker compose up -d mysql redis
+```
+
+再启动后端：
+
+```bash
+cd backend
+mvn spring-boot:run -Pdev
+```
+
 `prod` profile 不再提供数据库和 Redis 的本地默认值，启动前必须显式注入 `DB_URL`、`DB_USERNAME`、`DB_PASSWORD`、`REDIS_HOST` 等环境变量，避免生产环境误用开发配置。
+
+常用 Maven profile：
+
+```bash
+cd backend
+mvn spring-boot:run -Pdev
+mvn test -Ptest
+mvn package -Pprod
+```
 
 ## 测试
 
 ```bash
 cd backend
-mvn test
+mvn test -Ptest
 ```
 
 测试使用 `test` profile，数据源为 H2，避免单元/集成测试依赖本地 MySQL/Redis 容器。

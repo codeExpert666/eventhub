@@ -1,7 +1,7 @@
 package com.eventhub.common.exception;
 
-import com.eventhub.common.error.ErrorCode;
-import com.eventhub.common.response.ApiResponse;
+import com.eventhub.common.api.ErrorCode;
+import com.eventhub.common.api.ApiResponse;
 import jakarta.validation.ConstraintViolationException;
 import java.util.LinkedHashMap;
 import java.util.Map;

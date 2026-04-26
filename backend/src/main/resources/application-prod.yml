@@ -10,7 +10,7 @@
 # 对当前项目来说，最常见的注入方式有两类：
 # 1. 容器化部署
 #    由 Docker / Docker Compose / Kubernetes 在启动容器时注入环境变量。
-#    例如如果后续为应用补一个 compose 服务，写法通常会类似：
+#    当前 docker-compose.yml 中的 backend 服务就是这种方式，写法通常类似：
 #    services:
 #      backend:
 #        image: eventhub-backend:latest

@@ -178,4 +178,42 @@
             </plugin>
         </plugins>
     </build>
+
+    <!--
+        Maven profile 入口。
+        这里的 dev / test / prod 主要服务于“用 Maven 启动应用时选择哪个 Spring profile”。
+        它不会替代 Spring Boot 自身的 application-*.yml，而是把常用启动命令收敛成：
+        - mvn spring-boot:run -Pdev
+        - mvn spring-boot:run -Ptest
+        - mvn spring-boot:run -Pprod
+
+        需要注意：test profile 的完整配置文件位于 src/test/resources/application-test.yml，
+        因此它主要面向测试运行和需要显式验证 test 配置的场景；普通本地开发仍使用 dev。
+    -->
+    <profiles>
+        <profile>
+            <id>dev</id>
+            <activation>
+                <!-- 不显式指定 -P 时，Maven 启动应用默认使用 dev，与 application.yml 中的默认 profile 保持一致。 -->
+                <activeByDefault>true</activeByDefault>
+            </activation>
+            <properties>
+                <spring-boot.run.profiles>dev</spring-boot.run.profiles>
+            </properties>
+        </profile>
+
+        <profile>
+            <id>test</id>
+            <properties>
+                <spring-boot.run.profiles>test</spring-boot.run.profiles>
+            </properties>
+        </profile>
+
+        <profile>
+            <id>prod</id>
+            <properties>
+                <spring-boot.run.profiles>prod</spring-boot.run.profiles>
+            </properties>
+        </profile>
+    </profiles>
 </project>

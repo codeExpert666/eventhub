@@ -1,4 +1,4 @@
-package com.eventhub.modules.system.dto;
+package com.eventhub.modules.system.dto.request;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;

@@ -1,4 +1,4 @@
-package com.eventhub.modules.system.domain;
+package com.eventhub.modules.system.vo;
 
 import java.time.OffsetDateTime;
 

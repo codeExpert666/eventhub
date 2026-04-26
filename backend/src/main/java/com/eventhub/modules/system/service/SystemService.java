@@ -1,8 +1,8 @@
 package com.eventhub.modules.system.service;
 
-import com.eventhub.modules.system.domain.EchoInfo;
-import com.eventhub.modules.system.domain.PingInfo;
-import com.eventhub.modules.system.dto.EchoRequest;
+import com.eventhub.modules.system.dto.request.EchoRequest;
+import com.eventhub.modules.system.vo.EchoInfo;
+import com.eventhub.modules.system.vo.PingInfo;
 import java.time.OffsetDateTime;
 import java.util.Arrays;
 import java.util.List;
