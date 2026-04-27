@@ -8,24 +8,128 @@
 
 ## 范围
 
-- User/Role/UserRole 数据模型。
-- 密码加密。
-- JWT 鉴权。
-- Spring Security 基础接入。
+- modules 中新增 auth 模块 
+- User / Role / UserRole 数据模型。
+- 用户注册。
+- 用户登录。
+- BCrypt 密码加密。
+- JWT 签发与校验。
+- 获取当前用户。
 - 管理员种子数据。
-- 基础权限注解与鉴权流程。
+- Spring Security 基础接入。
+- 基础权限注解。
+- 认证异常和授权异常处理。
 
 ## 非范围
 
-- OAuth。
-- 短信/邮件验证码。
+- OAuth2 完整授权服务器。
+- 短信验证码。
+- 邮件验证码。
 - 找回密码。
-- 复杂权限中心。
+- 多租户权限系统。
+- 复杂菜单权限。
 
-## 要求
+## 接口清单
 
-- 明确表结构。
-- 明确 token 策略。
-- 明确异常场景。
-- 明确权限边界。
-- 明确测试点。
+```text
+POST /api/v1/auth/register
+POST /api/v1/auth/login
+GET  /api/v1/me
+POST /api/v1/auth/logout
+```
+
+可选管理接口：
+
+```text
+GET   /api/v1/admin/users
+PATCH /api/v1/admin/users/{userId}/status
+```
+
+## Token 策略
+
+简历版建议先实现 access token：
+
+```text
+access_token 有效期：30 分钟
+JWT claims：
+  sub: userId
+  username
+  roles
+  iat
+  exp
+```
+
+进阶可补 refresh token：
+
+```text
+refresh_token 存 Redis
+key: auth:refresh:{userId}:{tokenId}
+ttl: 7d
+```
+
+## 权限边界
+
+```text
+游客：注册、登录、查看公开活动列表与详情
+USER：创建订单、查看自己的订单、模拟支付
+ADMIN：管理活动、场次、票种、查看操作日志
+```
+
+## 关键异常场景
+
+- 用户名重复。
+- 邮箱重复。
+- 密码格式不合法。
+- 登录密码错误。
+- 用户被禁用。
+- token 缺失。
+- token 过期。
+- token 签名非法。
+- USER 访问 ADMIN 接口。
+
+## 交付物
+
+```text
+users / roles / user_roles 表
+AuthController
+UserController
+JwtTokenService
+SecurityConfig
+PasswordEncoder 配置
+管理员种子数据 migration
+相关设计、实现、ADR文档
+```
+
+以下是每个模块内部的标准分层，对于 auth 模块来说，不涉及的可直接舍弃：
+
+```text
+modules/system
+├── controller
+├── service
+│   └── impl（简单 service 可不写接口）
+├── domain（service 逻辑复杂时才考虑此分层）
+├── mapper
+├── entity
+├── dto
+│   ├── request
+│   └── query
+├── vo
+├── converter
+├── enums
+└── exception
+```
+
+## 测试点
+
+- 注册成功。
+- 重复用户名注册失败。
+- 登录成功返回 token。
+- 密码错误登录失败。
+- 禁用用户不能登录。
+- 无 token 访问受保护接口返回 401。
+- USER 访问 ADMIN 接口返回 403。
+- token 过期后返回 401。
+
+## 面试表达
+
+> 使用 Spring Security 与 JWT 实现无状态认证，通过角色模型实现 USER / ADMIN 权限边界，并统一处理 401、403 等认证授权异常。
