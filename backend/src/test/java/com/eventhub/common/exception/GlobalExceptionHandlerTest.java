@@ -16,8 +16,14 @@ import org.springframework.web.servlet.resource.NoResourceFoundException;
  * GlobalExceptionHandler 行为测试。
  * <p>
  * 本测试类不启动 Spring 容器，而是直接调用异常处理器方法，
- * 用较低成本验证全局异常映射的核心契约。这样可以避免把本次 404 分支验证
+ * 用较低成本验证全局异常映射的核心契约。这样可以避免验证时
  * 绑定到完整 Web 上下文、数据库迁移或 OpenAPI 初始化流程上。
+ * </p>
+ * <p>
+ * 考虑到本测试类不启动 Spring 容器，不走 Filter 链，
+ * RequestIdFilter 便不会执行，MDC 里通常没有 requestId。
+ * 因此测试过程中不会对 requestId 进行验证，
+ * requestId 的正确性应由集成测试覆盖
  * </p>
  */
 class GlobalExceptionHandlerTest {
