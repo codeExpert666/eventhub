@@ -49,6 +49,12 @@
         <flyway.version>10.10.0</flyway.version>
         <!-- JJWT 用于签发与解析阶段 1 的 access token，版本集中声明便于后续安全升级。 -->
         <jjwt.version>0.12.6</jjwt.version>
+        <!--
+            MyBatis Spring Boot Starter 版本。
+            当前项目使用 Spring Boot 3.3.2 / Java 17，因此选择兼容 Spring Boot 3.x 的 3.0.x 分支；
+            4.x 分支面向 Spring Boot 4.x，不适合当前后端基线。
+        -->
+        <mybatis-spring-boot.version>3.0.5</mybatis-spring-boot.version>
     </properties>
 
     <!--
@@ -95,12 +101,15 @@
         </dependency>
 
         <!--
-            JDBC 数据访问基础依赖。
-            提供 DataSource、事务管理、JdbcTemplate 等能力，适合当前阶段保持数据访问链路清晰可控。
+            MyBatis 数据访问依赖。
+            它会基于 Spring Boot 的 DataSource / 事务管理能力创建 Mapper 代理，
+            让业务服务依赖 Mapper 接口和 XML SQL 映射，而不是直接操作 JdbcTemplate。
+            这种方式既保留 SQL 可见性，也更贴近企业项目中常见的数据访问层组织方式。
         -->
         <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-jdbc</artifactId>
+            <groupId>org.mybatis.spring.boot</groupId>
+            <artifactId>mybatis-spring-boot-starter</artifactId>
+            <version>${mybatis-spring-boot.version}</version>
         </dependency>
 
         <!--

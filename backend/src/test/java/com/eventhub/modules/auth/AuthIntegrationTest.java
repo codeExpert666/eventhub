@@ -1,5 +1,6 @@
 package com.eventhub.modules.auth;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -16,6 +17,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -110,6 +117,41 @@ class AuthIntegrationTest {
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("AUTH-409"))
                 .andExpect(jsonPath("$.message").value("邮箱已存在"));
+    }
+
+    /**
+     * 验证并发注册同一账号时，数据库唯一约束仍然是最终一致性防线。
+     * 两个请求即使同时进入注册流程，也只能有一个创建成功，另一个必须被转换为稳定的 409 业务冲突。
+     */
+    @Test
+    void concurrentRegisterShouldCreateOnlyOneAccount() throws Exception {
+        String username = nextUsername("race");
+        String email = nextEmail(username);
+        ExecutorService executorService = Executors.newFixedThreadPool(2);
+        CountDownLatch ready = new CountDownLatch(2);
+        CountDownLatch start = new CountDownLatch(1);
+        Callable<Integer> registerTask = () -> {
+            ready.countDown();
+            if (!start.await(5, TimeUnit.SECONDS)) {
+                throw new IllegalStateException("Timed out waiting to start concurrent registration");
+            }
+            return registerAndReturnStatus(username, email);
+        };
+
+        try {
+            Future<Integer> firstResult = executorService.submit(registerTask);
+            Future<Integer> secondResult = executorService.submit(registerTask);
+            assertThat(ready.await(5, TimeUnit.SECONDS)).isTrue();
+
+            start.countDown();
+
+            assertThat(List.of(
+                    firstResult.get(10, TimeUnit.SECONDS),
+                    secondResult.get(10, TimeUnit.SECONDS)
+            )).containsExactlyInAnyOrder(200, 409);
+        } finally {
+            executorService.shutdownNow();
+        }
     }
 
     /**
@@ -309,6 +351,19 @@ class AuthIntegrationTest {
                 .andExpect(status().isOk())
                 .andReturn();
         return objectMapper.readTree(result.getResponse().getContentAsString()).path("data");
+    }
+
+    private int registerAndReturnStatus(String username, String email) throws Exception {
+        return mockMvc.perform(post("/api/v1/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(toJson(Map.of(
+                                "username", username,
+                                "email", email,
+                                "password", "Password123"
+                        ))))
+                .andReturn()
+                .getResponse()
+                .getStatus();
     }
 
     private String loginAndExtractToken(String usernameOrEmail, String password) throws Exception {

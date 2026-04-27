@@ -61,6 +61,18 @@ spring:
     # 并结合数据库中的 flyway_schema_history 记录判断哪些脚本需要执行。
     locations: classpath:db/migration
 
+mybatis:
+  # MyBatis XML Mapper 文件位置。
+  # classpath*:mapper/**/*.xml 表示从运行时 classpath 中扫描 mapper 目录及其子目录下的 XML，
+  # 这样每个业务模块都可以按 resources/mapper/<module>/*.xml 组织自己的 SQL 映射文件。
+  mapper-locations: classpath*:mapper/**/*.xml
+  configuration:
+    # 开启下划线字段到驼峰属性的自动映射。
+    # 例如数据库列 password_hash 可以映射到 Java 属性 passwordHash。
+    # 当前核心结果映射仍会使用显式 resultMap，便于学习阶段看清每个字段如何进入持久化对象；
+    # 这个全局配置主要服务后续简单查询和新模块的默认映射习惯。
+    map-underscore-to-camel-case: true
+
 server:
   # 后端服务默认端口。
   # 如部署环境需要不同端口，可通过外部配置覆盖。

@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.eventhub.modules.auth.mapper.RoleMapper">
+
+    <!-- roles 表到 RoleEntity record 的显式构造器映射，和 UserMapper 保持同一种 MyBatis 使用规范。 -->
+    <resultMap id="RoleEntityResultMap" type="com.eventhub.modules.auth.entity.RoleEntity">
+        <constructor>
+            <idArg column="id" javaType="java.lang.Long"/>
+            <arg column="code" javaType="java.lang.String"/>
+            <arg column="name" javaType="java.lang.String"/>
+            <arg column="description" javaType="java.lang.String"/>
+            <arg column="created_at" javaType="java.time.LocalDateTime"/>
+        </constructor>
+    </resultMap>
+
+    <select id="findByCode" resultMap="RoleEntityResultMap">
+        SELECT id, code, name, description, created_at
+        FROM roles
+        WHERE code = #{code}
+    </select>
+
+    <select id="findRoleCodesByUserId" resultType="java.lang.String">
+        SELECT r.code
+        FROM roles r
+        JOIN user_roles ur ON ur.role_id = r.id
+        WHERE ur.user_id = #{userId}
+        ORDER BY r.code ASC
+    </select>
+
+    <insert id="addRoleToUser">
+        INSERT INTO user_roles (user_id, role_id)
+        VALUES (#{userId}, #{roleId})
+    </insert>
+</mapper>

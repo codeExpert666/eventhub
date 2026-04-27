@@ -9,6 +9,7 @@ import com.eventhub.modules.auth.enums.UserStatus;
 import com.eventhub.modules.auth.exception.AuthException;
 import com.eventhub.modules.auth.mapper.RoleMapper;
 import com.eventhub.modules.auth.mapper.UserMapper;
+import com.eventhub.modules.auth.mapper.param.UserCreateParam;
 import com.eventhub.modules.auth.security.AuthenticatedUser;
 import com.eventhub.modules.auth.security.JwtTokenService;
 import com.eventhub.modules.auth.vo.LoginResponse;
@@ -58,7 +59,22 @@ public class AuthService {
         }
 
         try {
-            Long userId = userMapper.insert(username, email, passwordEncoder.encode(request.password()));
+            UserCreateParam createParam = UserCreateParam.enabledUser(
+                    username,
+                    email,
+                    passwordEncoder.encode(request.password())
+            );
+            int affectedRows = userMapper.insert(createParam);
+            if (affectedRows != 1 || createParam.getId() == null) {
+                /*
+                 * 正常情况下 MyBatis 会通过数据库 generated keys 把 users.id 回填到参数对象。
+                 * 如果这里没有拿到 id，说明 Mapper XML、驱动或数据库主键回填配置出现了基础设施问题，
+                 * 需要快速失败，避免继续写入 user_roles 造成难以排查的半完成注册流程。
+                 */
+                throw new IllegalStateException("Failed to retrieve generated user id");
+            }
+
+            Long userId = createParam.getId();
             RoleEntity userRole = roleMapper.findByCode(ROLE_USER)
                     .orElseThrow(() -> new IllegalStateException("Default USER role is missing"));
             roleMapper.addRoleToUser(userId, userRole.id());
