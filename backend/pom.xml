@@ -132,6 +132,18 @@
         </dependency>
 
         <!--
+            Lombok 编译期代码生成依赖。
+            当前仅用于生成构造器、getter 和日志字段等低业务含义样板代码，避免后续模块反复手写重复结构。
+            optional=true 表示该依赖不会传递给依赖 backend 的其他模块；真实运行时也不需要 Lombok 参与。
+            具体版本由 Spring Boot 父工程统一管理，避免和当前 Spring Boot 版本组合发生兼容性漂移。
+        -->
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <optional>true</optional>
+        </dependency>
+
+        <!--
             MySQL JDBC 驱动。
             Spring Boot 会在配置 DataSource 时通过该驱动连接本地或生产 MySQL 实例，驱动版本由父工程统一管理。
         -->
@@ -163,10 +175,61 @@
 
     <!--
         构建配置。
-        当前只保留 Spring Boot 打包插件，让 Maven 能把应用打成可直接运行的 Spring Boot 可执行 Jar。
+        这里配置的是“源码如何被编译”和“编译后的应用如何被打包”。
+        当前主要包含两个插件：
+        1. maven-compiler-plugin：负责 Java 源码编译，也负责触发 Lombok 这类注解处理器。
+        2. spring-boot-maven-plugin：负责把普通 Jar 重新打包成可直接启动的 Spring Boot 可执行 Jar。
     -->
     <build>
         <plugins>
+            <!--
+                Maven 编译插件。
+                可以把它理解成 Maven 调用 javac 编译 Java 源码时的“编译规则配置入口”。
+
+                默认情况下，Spring Boot 父工程已经会为我们配置好 Java 版本等常规编译参数；
+                这里额外写出这个插件，不是为了改变 Java 版本，而是为了明确告诉 Maven：
+                编译源码时需要启用 Lombok 这个 annotation processor。
+
+                annotation processor 可以直译为“注解处理器”。
+                它会在编译期扫描源码中的注解，例如 @Getter、@RequiredArgsConstructor、@Slf4j，
+                然后在 javac 编译过程中补齐对应的 getter、构造器、日志字段等代码。
+                所以源码里虽然看不到这些方法或字段，编译后的字节码里仍然会真实存在。
+
+                为什么要显式配置 annotationProcessorPaths：
+                1. 让命令行执行 mvn validate / mvn test / mvn package 时，都能稳定找到 Lombok；
+                2. 把“参与注解处理的依赖”和“应用运行时需要的依赖”分开，避免边界混在一起；
+                3. 后续如果再引入 MapStruct 这类编译期生成代码工具，也可以继续放在这里统一管理。
+
+                Lombok 只在编译期工作，生成的最终字节码仍然是普通 Java 类；
+                应用启动后不会再调用 Lombok，因此运行时不需要加载 Lombok。
+            -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <!--
+                        annotationProcessorPaths 专门声明“编译期注解处理器”的 classpath。
+                        这里的依赖不是业务代码 import 后在运行时使用的库，
+                        而是 javac 编译源码时临时加载的代码生成工具。
+                    -->
+                    <annotationProcessorPaths>
+                        <!--
+                            声明 Lombok 作为注解处理器。
+                            编译器遇到 Lombok 注解时，会通过这个处理器生成对应的构造器、getter、logger 等样板代码。
+                        -->
+                        <path>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                            <!--
+                                lombok.version 由 Spring Boot starter-parent 统一管理。
+                                这里引用父工程已经管理好的版本，避免手动写死版本后和 Spring Boot 生态组合发生偏移。
+                            -->
+                            <version>${lombok.version}</version>
+                        </path>
+                    </annotationProcessorPaths>
+                </configuration>
+            </plugin>
+
             <!--
                 Spring Boot Maven 插件。
                 主要负责 repackage：把普通 Jar 重新组织为包含依赖、启动器和应用类的可执行 Jar，
@@ -175,6 +238,15 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <!-- Lombok 是编译期工具，不应进入可执行 Jar；这里显式排除，保持运行时依赖边界清晰。 -->
+                    <excludes>
+                        <exclude>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                        </exclude>
+                    </excludes>
+                </configuration>
             </plugin>
         </plugins>
     </build>

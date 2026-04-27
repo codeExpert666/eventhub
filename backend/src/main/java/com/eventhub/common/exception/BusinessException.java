@@ -2,6 +2,7 @@ package com.eventhub.common.exception;
 
 import com.eventhub.common.api.ErrorCode;
 import java.util.Objects;
+import lombok.Getter;
 
 /**
  * 自定义业务异常。
@@ -12,7 +13,10 @@ public class BusinessException extends RuntimeException {
     /**
      * 当前业务异常对应的应用层错误码。
      * 全局异常处理器会基于该字段决定统一响应体中的 code 以及 HTTP 状态。
+     *
+     * <p>{@link Getter} 会生成 {@code getErrorCode()}，保持原有异常处理器和测试使用的访问契约不变。
      */
+    @Getter
     private final ErrorCode errorCode;
 
     /**
@@ -36,15 +40,6 @@ public class BusinessException extends RuntimeException {
     public BusinessException(ErrorCode errorCode, String message) {
         super(message);
         this.errorCode = requireErrorCode(errorCode);
-    }
-
-    /**
-     * 返回业务异常绑定的错误码。
-     *
-     * @return 当前异常的 ErrorCode
-     */
-    public ErrorCode getErrorCode() {
-        return errorCode;
     }
 
     private static ErrorCode requireErrorCode(ErrorCode errorCode) {

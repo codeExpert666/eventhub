@@ -6,6 +6,7 @@ import com.eventhub.modules.system.vo.PingInfo;
 import java.time.OffsetDateTime;
 import java.util.Arrays;
 import java.util.List;
+import lombok.RequiredArgsConstructor;
 import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Service;
 
@@ -26,8 +27,12 @@ import org.springframework.stereotype.Service;
  * 例如需要多套实现并按环境切换、需要为应用层与领域层建立明确端口边界、
  * 或者某个能力要被抽象成可替换的协作契约。也就是说，接口更适合在“确实存在抽象点”时引入，
  * 而不是在项目刚起步、只有单一实现时为了形式统一提前铺开。
+ *
+ * <p>{@link RequiredArgsConstructor} 会为 {@code final} 依赖字段生成构造器。
+ * 这里仍然坚持构造器注入，避免字段注入带来的不可测试和依赖不透明问题，只是减少手写样板代码。
  */
 @Service
+@RequiredArgsConstructor
 public class SystemService {
 
     /**
@@ -36,15 +41,6 @@ public class SystemService {
      * 避免把配置访问逻辑直接散落到控制器中。
      */
     private final Environment environment;
-
-    /**
-     * 通过构造器注入运行环境对象。
-     *
-     * @param environment Spring 运行环境，提供配置项和激活 Profile 等上下文信息
-     */
-    public SystemService(Environment environment) {
-        this.environment = environment;
-    }
 
     /**
      * 生成系统探活结果。

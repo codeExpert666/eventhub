@@ -6,8 +6,7 @@ import jakarta.validation.ConstraintViolationException;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.FieldError;
@@ -20,15 +19,14 @@ import org.springframework.web.servlet.resource.NoResourceFoundException;
  * 统一异常处理入口。
  * 这里显式区分请求体校验异常、方法参数约束异常、业务异常和未知异常，
  * 避免控制器层到处重复 try/catch，并确保所有失败响应都能落入统一的 ApiResponse 结构。
+ *
+ * <p>{@link Slf4j} 会在编译期生成名为 {@code log} 的日志字段，
+ * 语义等同于手写 {@code LoggerFactory.getLogger(GlobalExceptionHandler.class)}，
+ * 但能减少每个需要日志的类都重复声明日志器的样板代码。
  */
+@Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
-
-    /**
-     * 全局异常处理器专用日志记录器。
-     * 这里只记录真正需要排查的未知异常，避免把用户输入导致的常规校验失败误打成错误日志。
-     */
-    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     /**
      * 处理 @RequestBody 对象绑定后的字段校验异常。

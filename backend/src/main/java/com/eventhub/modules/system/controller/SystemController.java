@@ -8,6 +8,7 @@ import com.eventhub.modules.system.service.SystemService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -27,8 +28,13 @@ import org.springframework.web.bind.annotation.RestController;
  * <p>{@link Operation} 是 OpenAPI/Swagger 提供的方法级注解，用来描述某一个具体接口。
  * 其中 {@code summary} 用于展示接口的简短标题，适合让调用方快速扫一眼就知道接口用途；
  * {@code description} 用于补充更完整的说明，帮助前端、测试和后续维护者理解接口的验证目标与使用语义。
+ *
+ * <p>{@link RequiredArgsConstructor} 会为所有 {@code final} 字段生成构造器。
+ * 在 Spring 中，单构造器 Bean 可以省略 {@code @Autowired}，因此这里仍然是标准的构造器注入，
+ * 只是把原先手写的构造器交给 Lombok 在编译期生成。
  */
 @Tag(name = "System", description = "系统基础能力接口")
+@RequiredArgsConstructor
 @RestController
 @RequestMapping("/api/v1/system")
 public class SystemController {
@@ -39,16 +45,6 @@ public class SystemController {
      * 具体的探活信息组装、回显内容构造等逻辑交给服务层处理，以保持分层职责清晰。
      */
     private final SystemService systemService;
-
-    /**
-     * 通过构造器注入系统服务。
-     * Spring 会在创建控制器 Bean 时自动注入对应的 {@link SystemService} 实例。
-     *
-     * @param systemService 系统模块服务，负责承接控制器发起的基础能力调用
-     */
-    public SystemController(SystemService systemService) {
-        this.systemService = systemService;
-    }
 
     /**
      * 系统探活接口。
