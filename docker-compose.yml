@@ -7,7 +7,7 @@ services:
   # services 下的每一个一级子节点都是一个服务。
   # 服务名 `mysql` 不只是给人看的名字：
   # - 在同一个 Compose 网络内，其他容器可以通过主机名 `mysql` 访问它。
-  # - 当前文件没有后端容器，所以本机运行的后端通常通过 localhost:3306 连接它。
+  # - 没有后端容器时，本机运行的后端通常通过 localhost:3306 连接它。
   mysql:
     # image 指定容器使用哪个镜像。
     # mysql:8.4 表示使用 Docker Hub 上官方 MySQL 镜像的 8.4 标签。
