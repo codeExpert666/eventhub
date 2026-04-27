@@ -47,6 +47,8 @@
         <springdoc.version>2.6.0</springdoc.version>
         <!-- Flyway 负责数据库迁移，core 与 MySQL 扩展使用同一版本，减少迁移引擎内部模块不一致的风险。 -->
         <flyway.version>10.10.0</flyway.version>
+        <!-- JJWT 用于签发与解析阶段 1 的 access token，版本集中声明便于后续安全升级。 -->
+        <jjwt.version>0.12.6</jjwt.version>
     </properties>
 
     <!--
@@ -84,6 +86,15 @@
         </dependency>
 
         <!--
+            Spring Security 认证授权依赖。
+            阶段 1 使用它接入无状态 JWT 鉴权、角色访问控制、401/403 统一处理和密码哈希能力。
+        -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
+
+        <!--
             JDBC 数据访问基础依赖。
             提供 DataSource、事务管理、JdbcTemplate 等能力，适合当前阶段保持数据访问链路清晰可控。
         -->
@@ -109,6 +120,32 @@
             <groupId>org.springdoc</groupId>
             <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
             <version>${springdoc.version}</version>
+        </dependency>
+
+        <!--
+            JJWT API 模块。
+            业务代码只直接依赖 API 包，具体签名与 JSON 序列化实现由下方 runtime 依赖在运行期提供。
+        -->
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-api</artifactId>
+            <version>${jjwt.version}</version>
+        </dependency>
+
+        <!-- JJWT 默认实现，负责实际完成 JWT 构建、签名校验和 claims 解析。 -->
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-impl</artifactId>
+            <version>${jjwt.version}</version>
+            <scope>runtime</scope>
+        </dependency>
+
+        <!-- 让 JJWT 复用 Jackson 处理 claims 中的 JSON 数据结构，例如 roles 数组。 -->
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-jackson</artifactId>
+            <version>${jjwt.version}</version>
+            <scope>runtime</scope>
         </dependency>
 
         <!--

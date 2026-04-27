@@ -85,7 +85,7 @@ cd backend
 mvn spring-boot:run -Pdev
 ```
 
-`prod` profile 不再提供数据库和 Redis 的本地默认值，启动前必须显式注入 `DB_URL`、`DB_USERNAME`、`DB_PASSWORD`、`REDIS_HOST` 等环境变量，避免生产环境误用开发配置。
+`prod` profile 不再提供数据库、Redis 和 JWT 密钥的本地默认值，启动前必须显式注入 `DB_URL`、`DB_USERNAME`、`DB_PASSWORD`、`REDIS_HOST`、`EVENTHUB_JWT_SECRET` 等环境变量，避免生产环境误用开发配置。
 
 常用 Maven profile：
 

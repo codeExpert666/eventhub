@@ -103,6 +103,18 @@ springdoc:
     # 固定 Swagger UI 访问路径，便于 README、联调文档和浏览器访问入口保持一致。
     path: /swagger-ui.html
 
+eventhub:
+  security:
+    jwt:
+      # JWT 签发方标识。
+      # 解析 token 时会校验 issuer，避免误接受其他系统签发的结构相似 token。
+      issuer: eventhub-backend
+      # 阶段 1 的 access token 有效期。
+      # 30 分钟能兼顾演示便利性与泄露后的风险窗口；后续接入 refresh token 后可进一步缩短。
+      access-token-ttl: 30m
+      # 签名密钥不在公共配置中提供默认值，避免生产环境误用仓库内置密钥。
+      # dev/test profile 会提供本地默认值；prod profile 必须通过 EVENTHUB_JWT_SECRET 显式注入。
+
 logging:
   level:
     # root 表示“整个应用日志体系的默认兜底级别”。

@@ -60,3 +60,9 @@ management:
     redis:
       # 测试阶段默认关闭 Redis 健康检查，避免没有启动 Redis 时因为 Actuator 健康探针导致测试失败。
       enabled: false
+
+eventhub:
+  security:
+    jwt:
+      # 测试环境使用固定密钥，保证 JWT 集成测试可重复执行。
+      secret: eventhub-test-jwt-secret-for-auth-integration-coverage

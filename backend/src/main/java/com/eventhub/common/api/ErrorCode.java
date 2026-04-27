@@ -39,6 +39,24 @@ public enum ErrorCode {
     NOT_FOUND(HttpStatus.NOT_FOUND, "COMMON-404", "资源不存在"),
 
     /**
+     * 认证失败。
+     * 对应 HTTP 401，表示调用方没有提供有效登录凭证，或者凭证已经过期、签名非法。
+     */
+    AUTHENTICATION_FAILED(HttpStatus.UNAUTHORIZED, "AUTH-401", "认证失败"),
+
+    /**
+     * 权限不足。
+     * 对应 HTTP 403，表示调用方身份已经确认，但不具备访问目标资源所需的角色或权限。
+     */
+    ACCESS_DENIED(HttpStatus.FORBIDDEN, "AUTH-403", "权限不足"),
+
+    /**
+     * 账号唯一性冲突。
+     * 对应 HTTP 409，当前主要用于用户名或邮箱已经被注册的场景。
+     */
+    AUTH_CONFLICT(HttpStatus.CONFLICT, "AUTH-409", "账号信息已存在"),
+
+    /**
      * 服务端发生未预期异常，调用方通常无法自行恢复。
      * 对应 HTTP 500，用于兜底标识系统内部错误。
      */

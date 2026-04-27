@@ -55,3 +55,10 @@ management:
       # 本地环境保留完整健康详情，便于直接查看数据库、Redis 等依赖组件状态。
       show-details: always
       show-components: always
+
+eventhub:
+  security:
+    jwt:
+      # 本地开发默认 JWT 密钥，仅用于单机开发和学习演示。
+      # 如果是多人共享环境或需要模拟生产启动，请通过 EVENTHUB_JWT_SECRET 覆盖。
+      secret: ${EVENTHUB_JWT_SECRET:eventhub-dev-jwt-secret-please-change-for-shared-env}
