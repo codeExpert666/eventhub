@@ -1,5 +1,8 @@
 package com.eventhub.modules.auth.service;
 
+import com.eventhub.common.security.AuthenticatedSubject;
+import com.eventhub.infra.jwt.JwtTokenProvider;
+import com.eventhub.infra.jwt.model.AccessTokenClaims;
 import com.eventhub.modules.auth.dto.request.LoginRequest;
 import com.eventhub.modules.auth.dto.request.RegisterRequest;
 import com.eventhub.modules.auth.dto.request.UpdateUserStatusRequest;
@@ -10,23 +13,19 @@ import com.eventhub.modules.auth.exception.AuthException;
 import com.eventhub.modules.auth.mapper.RoleMapper;
 import com.eventhub.modules.auth.mapper.UserMapper;
 import com.eventhub.modules.auth.mapper.param.UserCreateParam;
-import com.eventhub.modules.auth.security.AuthenticatedUser;
-import com.eventhub.modules.auth.security.JwtTokenService;
 import com.eventhub.modules.auth.vo.LoginResponse;
 import com.eventhub.modules.auth.vo.UserInfo;
 import java.util.List;
 import java.util.Locale;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DuplicateKeyException;
-import org.springframework.security.authentication.DisabledException;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
  * 认证授权应用服务。
- * 负责注册、登录、当前用户查询、管理员用户管理，以及 JWT 过滤器所需的用户状态校验。
+ * 负责注册、登录、当前用户资料查询和管理员用户管理；JWT 过滤器所需的主体加载已拆到 AuthenticatedSubjectService。
  */
 @Service
 @RequiredArgsConstructor
@@ -37,7 +36,7 @@ public class AuthService {
     private final UserMapper userMapper;
     private final RoleMapper roleMapper;
     private final PasswordEncoder passwordEncoder;
-    private final JwtTokenService jwtTokenService;
+    private final JwtTokenProvider jwtTokenProvider;
 
     /**
      * 注册普通用户。
@@ -109,21 +108,22 @@ public class AuthService {
 
         UserInfo userInfo = toUserInfo(user);
         return new LoginResponse(
-                jwtTokenService.generateAccessToken(userInfo),
+                jwtTokenProvider.generateAccessToken(new AccessTokenClaims(userInfo.id())),
                 "Bearer",
-                jwtTokenService.accessTokenTtlSeconds(),
+                jwtTokenProvider.accessTokenTtlSeconds(),
                 userInfo
         );
     }
 
     /**
      * 根据认证上下文返回当前用户。
+     * 安全上下文只保存最小主体信息，接口响应需要回到 auth 模块查询最新用户资料并组装 UserInfo。
      *
-     * @param authenticatedUser SecurityContext 中的当前用户
+     * @param authenticatedSubject SecurityContext 中的当前认证主体
      * @return 用户摘要
      */
-    public UserInfo currentUser(AuthenticatedUser authenticatedUser) {
-        return authenticatedUser.toUserInfo();
+    public UserInfo currentUser(AuthenticatedSubject authenticatedSubject) {
+        return getUserInfo(authenticatedSubject.subjectId());
     }
 
     /**
@@ -153,23 +153,6 @@ public class AuthService {
             throw AuthException.userNotFound();
         }
         return getUserInfo(userId);
-    }
-
-    /**
-     * JWT 过滤器使用的用户加载方法。
-     * 即使 token 签名和有效期都合法，也必须重新查库确认用户没有被禁用。
-     *
-     * @param userId token subject 中的用户 id
-     * @return 当前认证用户
-     */
-    public AuthenticatedUser loadAuthenticatedUser(Long userId) {
-        UserEntity user = userMapper.findById(userId)
-                .orElseThrow(() -> new UsernameNotFoundException("User not found: " + userId));
-        if (user.status() == UserStatus.DISABLED) {
-            throw new DisabledException("User is disabled: " + userId);
-        }
-        List<String> roles = roleMapper.findRoleCodesByUserId(user.id());
-        return new AuthenticatedUser(user.id(), user.username(), user.email(), user.status(), roles);
     }
 
     private UserInfo getUserInfo(Long userId) {

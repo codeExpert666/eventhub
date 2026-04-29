@@ -1,5 +1,7 @@
 # 阶段 1 认证、JWT 与 RBAC 实现说明
 
+> 说明：本文记录阶段 1 初始认证实现的交付快照。当前 auth/security 包边界和最小 JWT 决策已在 `docs/ai/implementation/2026-04-29-auth-security-refactor-implementation.md` 中演进，阅读当前实现时以后者为准。
+
 ## 1. 本次改动解决了什么问题
 
 本次完成阶段 1 的最小可用认证授权闭环：

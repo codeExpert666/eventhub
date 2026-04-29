@@ -1,60 +1,54 @@
-package com.eventhub.modules.auth.security;
+package com.eventhub.infra.jwt;
 
-import com.eventhub.modules.auth.vo.UserInfo;
+import com.eventhub.infra.jwt.config.JwtProperties;
+import com.eventhub.infra.jwt.model.AccessTokenClaims;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Collection;
 import java.util.Date;
-import java.util.List;
 import javax.crypto.SecretKey;
 import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
+import org.springframework.stereotype.Component;
 
 /**
- * JWT 签发与解析服务。
- * 该类只负责 token 的密码学签名、有效期和 claims 读写，不直接决定用户是否有权访问某个接口。
+ * JWT access token 签发与解析组件。
+ * 该类只负责 token 的密码学签名、issuer、有效期和 claims 读写，不接触 HTTP 请求、SecurityContext 或 auth 业务模型。
  */
-@Service
+@Component
 @RequiredArgsConstructor
-public class JwtTokenService {
-
-    private static final String CLAIM_USERNAME = "username";
-    private static final String CLAIM_ROLES = "roles";
+public class JwtTokenProvider {
 
     private final JwtProperties jwtProperties;
 
     /**
      * 使用配置中的默认有效期签发 access token。
      *
-     * @param user 登录用户摘要
+     * @param claims token 中需要保存的最小身份声明
      * @return JWT 字符串
      */
-    public String generateAccessToken(UserInfo user) {
-        return generateAccessToken(user, jwtProperties.getAccessTokenTtl());
+    public String generateAccessToken(AccessTokenClaims claims) {
+        return generateAccessToken(claims, jwtProperties.getAccessTokenTtl());
     }
 
     /**
      * 使用指定有效期签发 access token。
      * 生产代码使用默认有效期；测试会传入负有效期构造过期 token，以覆盖认证失败分支。
      *
-     * @param user 登录用户摘要
+     * @param claims token 中需要保存的最小身份声明
      * @param ttl token 有效期
      * @return JWT 字符串
      */
-    public String generateAccessToken(UserInfo user, Duration ttl) {
+    public String generateAccessToken(AccessTokenClaims claims, Duration ttl) {
         Instant now = Instant.now();
         Instant expiresAt = now.plus(ttl);
         return Jwts.builder()
                 .issuer(jwtProperties.getIssuer())
-                .subject(String.valueOf(user.id()))
+                .subject(String.valueOf(claims.subjectId()))
                 .issuedAt(Date.from(now))
                 .expiration(Date.from(expiresAt))
-                .claim(CLAIM_USERNAME, user.username())
-                .claim(CLAIM_ROLES, user.roles())
                 .signWith(signingKey())
                 .compact();
     }
@@ -66,16 +60,15 @@ public class JwtTokenService {
      * @param token Bearer token 原始值
      * @return token 中的主体 claims
      */
-    public JwtPrincipalClaims parse(String token) {
+    public AccessTokenClaims parseAccessToken(String token) {
         Claims claims = Jwts.parser()
                 .verifyWith(signingKey())
                 .requireIssuer(jwtProperties.getIssuer())
                 .build()
                 .parseSignedClaims(token)
                 .getPayload();
-        Long userId = Long.valueOf(claims.getSubject());
-        String username = claims.get(CLAIM_USERNAME, String.class);
-        return new JwtPrincipalClaims(userId, username, readRoles(claims.get(CLAIM_ROLES)));
+        Long subjectId = Long.valueOf(claims.getSubject());
+        return new AccessTokenClaims(subjectId);
     }
 
     /**
@@ -89,14 +82,5 @@ public class JwtTokenService {
 
     private SecretKey signingKey() {
         return Keys.hmacShaKeyFor(jwtProperties.getSecret().getBytes(StandardCharsets.UTF_8));
-    }
-
-    private List<String> readRoles(Object rawRoles) {
-        if (rawRoles instanceof Collection<?> collection) {
-            return collection.stream()
-                    .map(String::valueOf)
-                    .toList();
-        }
-        return List.of();
     }
 }

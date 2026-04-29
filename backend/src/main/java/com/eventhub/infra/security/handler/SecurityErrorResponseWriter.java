@@ -1,4 +1,4 @@
-package com.eventhub.modules.auth.security;
+package com.eventhub.infra.security.handler;
 
 import com.eventhub.common.api.ApiResponse;
 import com.eventhub.common.api.ErrorCode;
@@ -16,7 +16,7 @@ import org.springframework.stereotype.Component;
  */
 @Component
 @RequiredArgsConstructor
-public class SecurityExceptionResponseWriter {
+public class SecurityErrorResponseWriter {
 
     private final ObjectMapper objectMapper;
 

@@ -12,7 +12,7 @@
 ## 2. 改动内容
 - 新增了什么
   - 新增 `mybatis-spring-boot.version` 与 `mybatis-spring-boot-starter` 依赖。
-  - 新增 `infra/mybatis/MyBatisConfig`，集中声明 Mapper 扫描边界。
+  - 新增 `infra/persistence/MyBatisConfig`，集中声明 Mapper 扫描边界。
   - 新增 `resources/mapper/auth/UserMapper.xml` 与 `RoleMapper.xml`，集中维护账号、角色相关 SQL。
   - 新增 `UserCreateParam`，用于用户插入时承接数据库生成主键回填。
   - 新增 MyBatis 设计文档与 ADR。

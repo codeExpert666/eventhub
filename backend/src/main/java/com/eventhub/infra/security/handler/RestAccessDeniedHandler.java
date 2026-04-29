@@ -1,4 +1,4 @@
-package com.eventhub.modules.auth.security;
+package com.eventhub.infra.security.handler;
 
 import com.eventhub.common.api.ErrorCode;
 import jakarta.servlet.http.HttpServletRequest;
@@ -15,9 +15,9 @@ import org.springframework.stereotype.Component;
  */
 @Component
 @RequiredArgsConstructor
-public class JsonAccessDeniedHandler implements AccessDeniedHandler {
+public class RestAccessDeniedHandler implements AccessDeniedHandler {
 
-    private final SecurityExceptionResponseWriter responseWriter;
+    private final SecurityErrorResponseWriter responseWriter;
 
     @Override
     public void handle(

@@ -9,9 +9,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.eventhub.modules.auth.enums.UserStatus;
-import com.eventhub.modules.auth.security.JwtTokenService;
-import com.eventhub.modules.auth.vo.UserInfo;
+import com.eventhub.infra.jwt.JwtTokenProvider;
+import com.eventhub.infra.jwt.model.AccessTokenClaims;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Duration;
@@ -52,7 +51,7 @@ class AuthIntegrationTest {
     private ObjectMapper objectMapper;
 
     @Autowired
-    private JwtTokenService jwtTokenService;
+    private JwtTokenProvider jwtTokenProvider;
 
     /**
      * 验证注册成功后会返回用户摘要，并默认绑定 USER 角色。
@@ -255,14 +254,8 @@ class AuthIntegrationTest {
     void expiredTokenShouldReturnUnauthorized() throws Exception {
         String username = nextUsername("expired");
         JsonNode registeredUser = register(username, nextEmail(username));
-        UserInfo userInfo = new UserInfo(
-                registeredUser.path("id").asLong(),
-                registeredUser.path("username").asText(),
-                registeredUser.path("email").asText(),
-                UserStatus.ENABLED,
-                List.of("USER")
-        );
-        String expiredToken = jwtTokenService.generateAccessToken(userInfo, Duration.ofSeconds(-5));
+        AccessTokenClaims claims = new AccessTokenClaims(registeredUser.path("id").asLong());
+        String expiredToken = jwtTokenProvider.generateAccessToken(claims, Duration.ofSeconds(-5));
 
         mockMvc.perform(get("/api/v1/me")
                         .header(HttpHeaders.AUTHORIZATION, bearer(expiredToken)))

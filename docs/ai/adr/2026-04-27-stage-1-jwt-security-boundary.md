@@ -4,7 +4,9 @@
 阶段 1 使用自定义 JWT Filter 并在认证时校验用户状态
 
 ## 状态
-- accepted
+- superseded
+
+该决策已被 `docs/ai/adr/2026-04-29-auth-security-boundary-refactor.md` 取代。本文保留阶段 1 初始实现的历史取舍，当前实现以 2026-04-29 ADR 中的最小 JWT 和 auth/security 边界重构为准。
 
 ## 背景
 阶段 1 需要完成注册登录、JWT 与 RBAC。项目当前仍处于单体学习型后端阶段，目标是用最小可用闭环建立认证和权限边界，同时让后续活动、订单、支付等模块能复用统一的当前用户上下文。

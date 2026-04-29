@@ -32,7 +32,7 @@
   - `modules/auth/mapper/UserMapper`
   - `modules/auth/mapper/RoleMapper`
   - `modules/auth/mapper/param/UserCreateParam`
-  - `infra/mybatis/MyBatisConfig`
+  - `infra/persistence/MyBatisConfig`
 - Mapper XML：
   - `resources/mapper/auth/UserMapper.xml`
   - `resources/mapper/auth/RoleMapper.xml`

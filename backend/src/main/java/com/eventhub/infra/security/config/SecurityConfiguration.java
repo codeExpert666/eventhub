@@ -1,5 +1,7 @@
-package com.eventhub.modules.auth.security;
+package com.eventhub.infra.security.config;
 
+import com.eventhub.infra.jwt.config.JwtProperties;
+import com.eventhub.infra.security.filter.JwtAuthenticationFilter;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -8,26 +10,27 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import org.springframework.security.web.AuthenticationEntryPoint;
 
 /**
- * Spring Security 配置。
+ * Spring Security 全局配置。
  * 阶段 1 使用无状态 JWT，不创建服务端 Session；认证失败和授权失败都返回统一 ApiResponse。
  */
 @Configuration
 @EnableMethodSecurity
 @EnableConfigurationProperties(JwtProperties.class)
-public class SecurityConfig {
+public class SecurityConfiguration {
 
     /**
      * 配置 HTTP 安全链路。
+     * 这里以方法参数注入安全组件，避免配置类、Filter 和业务服务之间形成构造器循环依赖。
      *
      * @param http Spring Security HTTP 配置入口
      * @param jwtAuthenticationFilter JWT 认证过滤器

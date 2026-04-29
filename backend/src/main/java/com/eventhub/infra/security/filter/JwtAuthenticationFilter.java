@@ -1,26 +1,31 @@
-package com.eventhub.modules.auth.security;
+package com.eventhub.infra.security.filter;
 
-import com.eventhub.modules.auth.service.AuthService;
+import com.eventhub.common.security.AuthenticatedSubject;
+import com.eventhub.common.security.AuthenticatedSubjectLoader;
+import com.eventhub.infra.jwt.JwtTokenProvider;
+import com.eventhub.infra.jwt.model.AccessTokenClaims;
 import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 /**
  * JWT 认证过滤器。
- * 每个请求最多执行一次：读取 Authorization Bearer token，校验 JWT，并把当前用户写入 SecurityContext。
+ * 每个请求最多执行一次：读取 Authorization Bearer token，校验 JWT，并把最小认证主体写入 SecurityContext。
  */
 @Component
 @RequiredArgsConstructor
@@ -28,8 +33,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private static final String BEARER_PREFIX = "Bearer ";
 
-    private final JwtTokenService jwtTokenService;
-    private final AuthService authService;
+    private final JwtTokenProvider jwtTokenProvider;
+    private final AuthenticatedSubjectLoader authenticatedSubjectLoader;
     private final AuthenticationEntryPoint authenticationEntryPoint;
 
     @Override
@@ -44,12 +49,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         try {
-            JwtPrincipalClaims claims = jwtTokenService.parse(token);
-            AuthenticatedUser authenticatedUser = authService.loadAuthenticatedUser(claims.userId());
+            AccessTokenClaims claims = jwtTokenProvider.parseAccessToken(token);
+            AuthenticatedSubject subject = authenticatedSubjectLoader.loadBySubjectId(claims.subjectId());
             UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
-                    authenticatedUser,
+                    subject,
                     null,
-                    authenticatedUser.authorities()
+                    toGrantedAuthorities(subject)
             );
             authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
             SecurityContextHolder.getContext().setAuthentication(authentication);
@@ -71,5 +76,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
         String token = authorization.substring(BEARER_PREFIX.length()).trim();
         return token.isEmpty() ? null : token;
+    }
+
+    private List<SimpleGrantedAuthority> toGrantedAuthorities(AuthenticatedSubject subject) {
+        return subject.authorities()
+                .stream()
+                .map(SimpleGrantedAuthority::new)
+                .toList();
     }
 }

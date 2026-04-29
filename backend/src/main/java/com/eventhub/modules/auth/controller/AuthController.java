@@ -1,9 +1,9 @@
 package com.eventhub.modules.auth.controller;
 
 import com.eventhub.common.api.ApiResponse;
+import com.eventhub.common.security.AuthenticatedSubject;
 import com.eventhub.modules.auth.dto.request.LoginRequest;
 import com.eventhub.modules.auth.dto.request.RegisterRequest;
-import com.eventhub.modules.auth.security.AuthenticatedUser;
 import com.eventhub.modules.auth.service.AuthService;
 import com.eventhub.modules.auth.vo.LoginResponse;
 import com.eventhub.modules.auth.vo.UserInfo;
@@ -57,12 +57,12 @@ public class AuthController {
      * 用户登出。
      * 当前 access token 不落库，服务端无法主动吊销已签发 token，因此该接口表达客户端删除本地 token 的协议语义。
      *
-     * @param authenticatedUser 当前登录用户；参数存在即表示请求已经通过认证
+     * @param authenticatedSubject 当前认证主体；参数存在即表示请求已经通过认证
      * @return 空成功响应
      */
     @Operation(summary = "用户登出", description = "无状态 JWT 登出入口，客户端应删除本地 token")
     @PostMapping("/logout")
-    public ApiResponse<Void> logout(@AuthenticationPrincipal AuthenticatedUser authenticatedUser) {
+    public ApiResponse<Void> logout(@AuthenticationPrincipal AuthenticatedSubject authenticatedSubject) {
         return ApiResponse.success();
     }
 }

@@ -1,11 +1,11 @@
-package com.eventhub.modules.auth.security;
+package com.eventhub.infra.jwt.config;
 
-import java.time.Duration;
-import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.validation.annotation.Validated;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
+import java.time.Duration;
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.validation.annotation.Validated;
 
 /**
  * JWT 配置属性。
