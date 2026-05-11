@@ -233,6 +233,19 @@ class AuthIntegrationTest {
     }
 
     /**
+     * 验证登出接口被明确建模为登录后接口。
+     *
+     * <p>当前登出不在服务端吊销 token，但它仍表达“当前用户主动结束本地登录态”的协议语义，
+     * 因此必须要求请求已经携带合法 Bearer token。
+     */
+    @Test
+    void logoutShouldRequireAuthentication() throws Exception {
+        mockMvc.perform(post("/api/v1/auth/logout"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("AUTH-401"));
+    }
+
+    /**
      * 验证普通 USER 角色不能访问管理员用户列表。
      */
     @Test

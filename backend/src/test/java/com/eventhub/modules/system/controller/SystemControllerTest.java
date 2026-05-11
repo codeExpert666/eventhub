@@ -1,6 +1,8 @@
 package com.eventhub.modules.system.controller;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.head;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -76,6 +78,22 @@ class SystemControllerTest {
                 .andExpect(jsonPath("$.message").value("成功"))
                 // data 则承载真正的业务结果，这里验证服务名是否被正确返回。
                 .andExpect(jsonPath("$.data.serviceName").value("eventhub-backend"));
+    }
+
+    /**
+     * 验证系统模块不再通过 /api/v1/system/** 路径通配公开所有请求方法。
+     *
+     * <p>当前只有 GET /ping 和 POST /echo 是明确公开接口。
+     * 如果未登录用户使用 DELETE 访问同一命名空间下的路径，应该先被安全规则拦截为 401，
+     * 避免未来在 system 命名空间中新增写接口时，因为路径级 permitAll 被意外公开。
+     */
+    @Test
+    void systemNamespaceShouldNotPermitUnsupportedMethodWithoutToken() throws Exception {
+        mockMvc.perform(delete("/api/v1/system/ping"))
+                .andExpect(status().isUnauthorized())
+                // 401 在进入 Controller 前由 Spring Security 返回，仍带 requestId 表示 RequestIdFilter 已足够靠前。
+                .andExpect(header().exists(RequestIdFilter.HEADER_NAME))
+                .andExpect(jsonPath("$.code").value("AUTH-401"));
     }
 
     /**
@@ -191,6 +209,18 @@ class SystemControllerTest {
         mockMvc.perform(get("/actuator/health"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("UP"));
+    }
+
+    /**
+     * 验证健康检查端点的 HEAD 请求也被显式放行。
+     *
+     * <p>部分负载均衡、代理或部署平台会用 HEAD 做轻量探测；
+     * 安全配置中单独放行 HEAD，可以避免这些基础设施请求被错误识别为未登录业务请求。
+     */
+    @Test
+    void healthEndpointShouldPermitHeadRequest() throws Exception {
+        mockMvc.perform(head("/actuator/health"))
+                .andExpect(status().isOk());
     }
 
     /**

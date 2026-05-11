@@ -8,6 +8,8 @@ import java.io.IOException;
 import java.util.UUID;
 import java.util.regex.Pattern;
 import org.slf4j.MDC;
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -18,6 +20,11 @@ import org.springframework.web.filter.OncePerRequestFilter;
  * 避免控制器、服务层和异常处理器各自维护追踪标识。
  */
 @Component
+/*
+ * Spring Security 的外层代理过滤器也注册在 Servlet 容器过滤器链中。
+ * requestId 必须早于安全链路绑定，才能覆盖未认证、无权限等在进入 Controller 前就返回的失败响应。
+ */
+@Order(Ordered.HIGHEST_PRECEDENCE)
 public class RequestIdFilter extends OncePerRequestFilter {
 
     /**
