@@ -138,7 +138,8 @@ public class SecurityConfiguration {
                         .requestMatchers(HttpMethod.HEAD, "/actuator/health", "/actuator/info").permitAll()
                         // OpenAPI/Swagger 文档接口开放，方便开发阶段查看和调试 API。
                         .requestMatchers(HttpMethod.GET, "/v3/api-docs", "/v3/api-docs/**",
-                                "/swagger-ui.html", "/swagger-ui/**").permitAll()
+                                "/swagger-ui.html", "/swagger-ui/**")
+                        .permitAll()
                         // 浏览器会自动请求 favicon.ico，放行可以避免无意义的 401 日志。
                         .requestMatchers(HttpMethod.GET, "/favicon.ico").permitAll()
                         // 已登录用户接口明确声明，便于从配置中直接看出认证边界。

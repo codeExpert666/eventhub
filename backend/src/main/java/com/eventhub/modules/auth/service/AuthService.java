@@ -1,5 +1,13 @@
 package com.eventhub.modules.auth.service;
 
+import java.util.List;
+import java.util.Locale;
+
+import org.springframework.dao.DuplicateKeyException;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.eventhub.common.security.AuthenticatedSubject;
 import com.eventhub.infra.jwt.JwtTokenProvider;
 import com.eventhub.infra.jwt.model.AccessTokenClaims;
@@ -15,13 +23,8 @@ import com.eventhub.modules.auth.mapper.UserMapper;
 import com.eventhub.modules.auth.mapper.param.UserCreateParam;
 import com.eventhub.modules.auth.vo.LoginResponse;
 import com.eventhub.modules.auth.vo.UserInfo;
-import java.util.List;
-import java.util.Locale;
+
 import lombok.RequiredArgsConstructor;
-import org.springframework.dao.DuplicateKeyException;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 /**
  * 认证授权应用服务。
@@ -61,8 +64,7 @@ public class AuthService {
             UserCreateParam createParam = UserCreateParam.enabledUser(
                     username,
                     email,
-                    passwordEncoder.encode(request.password())
-            );
+                    passwordEncoder.encode(request.password()));
             int affectedRows = userMapper.insert(createParam);
             if (affectedRows != 1 || createParam.getId() == null) {
                 /*
@@ -111,8 +113,7 @@ public class AuthService {
                 jwtTokenProvider.generateAccessToken(new AccessTokenClaims(userInfo.id())),
                 "Bearer",
                 jwtTokenProvider.accessTokenTtlSeconds(),
-                userInfo
-        );
+                userInfo);
     }
 
     /**
@@ -142,7 +143,7 @@ public class AuthService {
     /**
      * 管理员更新用户状态。
      *
-     * @param userId 用户主键
+     * @param userId  用户主键
      * @param request 状态更新请求
      * @return 更新后的用户摘要
      */
@@ -167,8 +168,7 @@ public class AuthService {
                 user.username(),
                 user.email(),
                 user.status(),
-                roleMapper.findRoleCodesByUserId(user.id())
-        );
+                roleMapper.findRoleCodesByUserId(user.id()));
     }
 
     private String normalizeUsername(String username) {

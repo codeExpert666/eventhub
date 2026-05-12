@@ -1,17 +1,19 @@
 package com.eventhub.infra.logging;
 
-import jakarta.servlet.FilterChain;
-import jakarta.servlet.ServletException;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.UUID;
 import java.util.regex.Pattern;
+
 import org.slf4j.MDC;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
+
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 /**
  * 为每个请求注入 requestId，并同步写入 MDC 与响应头。
@@ -55,11 +57,11 @@ public class RequestIdFilter extends OncePerRequestFilter {
      * 4. 放行后续过滤器链与业务处理；
      * 5. 在 finally 中清理 MDC，避免线程复用时发生 requestId 串用。
      *
-     * @param request 当前 HTTP 请求
-     * @param response 当前 HTTP 响应
+     * @param request     当前 HTTP 请求
+     * @param response    当前 HTTP 响应
      * @param filterChain 过滤器链
      * @throws ServletException Servlet 过滤器处理异常
-     * @throws IOException IO 异常
+     * @throws IOException      IO 异常
      */
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)

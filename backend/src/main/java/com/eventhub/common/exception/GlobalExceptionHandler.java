@@ -1,12 +1,9 @@
 package com.eventhub.common.exception;
 
-import com.eventhub.common.api.ErrorCode;
-import com.eventhub.common.api.ApiResponse;
-import jakarta.validation.ConstraintViolationException;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
-import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.FieldError;
@@ -15,12 +12,19 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
+import com.eventhub.common.api.ApiResponse;
+import com.eventhub.common.api.ErrorCode;
+
+import jakarta.validation.ConstraintViolationException;
+import lombok.extern.slf4j.Slf4j;
+
 /**
  * 统一异常处理入口。
  * 这里显式区分请求体校验异常、方法参数约束异常、业务异常和未知异常，
  * 避免控制器层到处重复 try/catch，并确保所有失败响应都能落入统一的 ApiResponse 结构。
  *
- * <p>{@link Slf4j} 会在编译期生成名为 {@code log} 的日志字段，
+ * <p>
+ * {@link Slf4j} 会在编译期生成名为 {@code log} 的日志字段，
  * 语义等同于手写 {@code LoggerFactory.getLogger(GlobalExceptionHandler.class)}，
  * 但能减少每个需要日志的类都重复声明日志器的样板代码。
  */
@@ -46,13 +50,11 @@ public class GlobalExceptionHandler {
                         FieldError::getField,
                         FieldError::getDefaultMessage,
                         (first, second) -> first,
-                        LinkedHashMap::new
-                ));
+                        LinkedHashMap::new));
         ApiResponse<Map<String, String>> response = ApiResponse.failure(
                 ErrorCode.VALIDATION_ERROR,
                 "请求体参数校验失败",
-                fieldErrors
-        );
+                fieldErrors);
         return ResponseEntity.status(ErrorCode.VALIDATION_ERROR.getHttpStatus()).body(response);
     }
 
@@ -73,13 +75,11 @@ public class GlobalExceptionHandler {
                         violation -> violation.getPropertyPath().toString(),
                         violation -> violation.getMessage(),
                         (first, second) -> first,
-                        LinkedHashMap::new
-                ));
+                        LinkedHashMap::new));
         ApiResponse<Map<String, String>> response = ApiResponse.failure(
                 ErrorCode.VALIDATION_ERROR,
                 "请求参数约束校验失败",
-                fieldErrors
-        );
+                fieldErrors);
         return ResponseEntity.status(ErrorCode.VALIDATION_ERROR.getHttpStatus()).body(response);
     }
 
@@ -96,8 +96,7 @@ public class GlobalExceptionHandler {
         ApiResponse<Map<String, String>> response = ApiResponse.failure(
                 ErrorCode.VALIDATION_ERROR,
                 "请求体格式不合法",
-                Map.of("body", "请求体缺失或 JSON 格式错误")
-        );
+                Map.of("body", "请求体缺失或 JSON 格式错误"));
         return ResponseEntity.status(ErrorCode.VALIDATION_ERROR.getHttpStatus()).body(response);
     }
 
@@ -113,8 +112,7 @@ public class GlobalExceptionHandler {
         ApiResponse<Void> response = ApiResponse.failure(
                 exception.getErrorCode(),
                 exception.getMessage(),
-                null
-        );
+                null);
         return ResponseEntity.status(exception.getErrorCode().getHttpStatus()).body(response);
     }
 
@@ -132,8 +130,7 @@ public class GlobalExceptionHandler {
         ApiResponse<Void> response = ApiResponse.failure(
                 ErrorCode.NOT_FOUND,
                 "请求的资源不存在",
-                null
-        );
+                null);
         return ResponseEntity.status(ErrorCode.NOT_FOUND.getHttpStatus()).body(response);
     }
 
@@ -150,8 +147,7 @@ public class GlobalExceptionHandler {
         ApiResponse<Void> response = ApiResponse.failure(
                 ErrorCode.INTERNAL_ERROR,
                 ErrorCode.INTERNAL_ERROR.getDefaultMessage(),
-                null
-        );
+                null);
         return ResponseEntity.status(ErrorCode.INTERNAL_ERROR.getHttpStatus()).body(response);
     }
 }

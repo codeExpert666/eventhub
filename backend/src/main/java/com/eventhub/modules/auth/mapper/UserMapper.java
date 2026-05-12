@@ -1,12 +1,14 @@
 package com.eventhub.modules.auth.mapper;
 
+import java.util.List;
+import java.util.Optional;
+
+import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
+
 import com.eventhub.modules.auth.entity.UserEntity;
 import com.eventhub.modules.auth.enums.UserStatus;
 import com.eventhub.modules.auth.mapper.param.UserCreateParam;
-import java.util.List;
-import java.util.Optional;
-import org.apache.ibatis.annotations.Mapper;
-import org.apache.ibatis.annotations.Param;
 
 /**
  * users 表数据访问入口。

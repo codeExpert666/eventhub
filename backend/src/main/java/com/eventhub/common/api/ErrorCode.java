@@ -1,13 +1,15 @@
 package com.eventhub.common.api;
 
-import lombok.Getter;
 import org.springframework.http.HttpStatus;
+
+import lombok.Getter;
 
 /**
  * 统一错误码定义。
  * 当前只保留基础工程所需的最小集合，后续业务模块可以在此基础上继续扩展。
  *
- * <p>{@link Getter} 会为下方三个只读字段生成标准 getter，
+ * <p>
+ * {@link Getter} 会为下方三个只读字段生成标准 getter，
  * 例如 {@code getCode()}、{@code getHttpStatus()} 和 {@code getDefaultMessage()}。
  * 这些访问方法仍然是对外契约的一部分，只是由 Lombok 在编译期生成，避免枚举字段增加后重复维护样板方法。
  */

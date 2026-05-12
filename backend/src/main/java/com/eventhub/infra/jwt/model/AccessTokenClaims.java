@@ -8,6 +8,5 @@ package com.eventhub.infra.jwt.model;
  * @param subjectId token subject 中的主体标识
  */
 public record AccessTokenClaims(
-        Long subjectId
-) {
+        Long subjectId) {
 }

@@ -1,19 +1,23 @@
 package com.eventhub.infra.jwt.config;
 
+import java.time.Duration;
+
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.validation.annotation.Validated;
+
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
-import java.time.Duration;
 import lombok.Getter;
 import lombok.Setter;
-import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.validation.annotation.Validated;
 
 /**
  * JWT 配置属性。
  *
- * <p>这个类专门负责承接配置文件中的 JWT 参数，
- * 例如 application.yml、application-dev.yml、application-prod.yml 中的：</p>
+ * <p>
+ * 这个类专门负责承接配置文件中的 JWT 参数，
+ * 例如 application.yml、application-dev.yml、application-prod.yml 中的：
+ * </p>
  *
  * <pre>
  * eventhub:
@@ -24,9 +28,11 @@ import org.springframework.validation.annotation.Validated;
  *       secret: ...
  * </pre>
  *
- * <p>把密钥、签发方和有效期从代码中抽离出来后，
+ * <p>
+ * 把密钥、签发方和有效期从代码中抽离出来后，
  * 本地开发、自动化测试和生产环境就可以使用不同配置，
- * 避免把生产密钥硬编码到代码仓库中。</p>
+ * 避免把生产密钥硬编码到代码仓库中。
+ * </p>
  */
 // 开启配置属性校验：当下面字段上的 @NotBlank、@Size、@NotNull 不满足时，应用启动会失败。
 @Validated
@@ -56,11 +62,15 @@ public class JwtProperties {
     /**
      * JWT 签发方。
      *
-     * <p>签发 token 时会把 issuer 写入 JWT；
-     * 解析 token 时也会校验 issuer，避免误接受其他系统签发的、结构相似的 token。</p>
+     * <p>
+     * 签发 token 时会把 issuer 写入 JWT；
+     * 解析 token 时也会校验 issuer，避免误接受其他系统签发的、结构相似的 token。
+     * </p>
      *
-     * <p>这里提供默认值，是为了让本地开发和测试在未显式配置 issuer 时也能启动。
-     * 生产环境仍可以通过配置文件或环境变量覆盖。</p>
+     * <p>
+     * 这里提供默认值，是为了让本地开发和测试在未显式配置 issuer 时也能启动。
+     * 生产环境仍可以通过配置文件或环境变量覆盖。
+     * </p>
      */
     // 不能为空字符串；如果配置成空值，启动阶段会直接失败。
     @NotBlank
@@ -69,13 +79,17 @@ public class JwtProperties {
     /**
      * HS256 签名密钥。
      *
-     * <p>JwtTokenProvider 会用这个密钥生成 HMAC-SHA256 签名。
-     * 签名的作用是保证 token 没有被客户端或第三方篡改。</p>
+     * <p>
+     * JwtTokenProvider 会用这个密钥生成 HMAC-SHA256 签名。
+     * 签名的作用是保证 token 没有被客户端或第三方篡改。
+     * </p>
      *
-     * <p>这个字段没有提供代码默认值，是有意为之：
+     * <p>
+     * 这个字段没有提供代码默认值，是有意为之：
      * 公共 application.yml 不应该内置真实密钥；
      * dev/test profile 可以提供学习和测试用密钥；
-     * prod profile 必须通过部署环境显式注入。</p>
+     * prod profile 必须通过部署环境显式注入。
+     * </p>
      */
     // 密钥不能为空，避免启动出一个无法正确签发/校验 token 的应用实例。
     @NotBlank
@@ -86,8 +100,10 @@ public class JwtProperties {
     /**
      * access token 有效期。
      *
-     * <p>Spring Boot 可以把配置中的 30m、1h、PT30M 等时间格式转换成 Duration。
-     * JwtTokenProvider 签发 token 时会用该值计算 expiration 过期时间。</p>
+     * <p>
+     * Spring Boot 可以把配置中的 30m、1h、PT30M 等时间格式转换成 Duration。
+     * JwtTokenProvider 签发 token 时会用该值计算 expiration 过期时间。
+     * </p>
      */
     // 有效期不能为空；如果缺失，签发 token 时无法计算过期时间。
     @NotNull

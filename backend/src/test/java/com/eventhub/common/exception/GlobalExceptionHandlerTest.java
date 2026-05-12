@@ -4,13 +4,14 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
-import com.eventhub.common.api.ErrorCode;
-import com.eventhub.common.api.ApiResponse;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
+
+import com.eventhub.common.api.ApiResponse;
+import com.eventhub.common.api.ErrorCode;
 
 /**
  * GlobalExceptionHandler 行为测试。

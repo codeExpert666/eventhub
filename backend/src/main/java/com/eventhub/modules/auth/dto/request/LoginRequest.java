@@ -9,18 +9,11 @@ import jakarta.validation.constraints.Size;
  * usernameOrEmail 允许用户用用户名或邮箱登录，服务层会统一按账号标识查询。
  *
  * @param usernameOrEmail 用户名或邮箱
- * @param password 明文密码，只用于本次登录校验
+ * @param password        明文密码，只用于本次登录校验
  */
 @Schema(description = "用户登录请求")
 public record LoginRequest(
-        @Schema(description = "用户名或邮箱", example = "alice")
-        @NotBlank(message = "usernameOrEmail 不能为空")
-        @Size(max = 128, message = "usernameOrEmail 长度不能超过 128 个字符")
-        String usernameOrEmail,
+        @Schema(description = "用户名或邮箱", example = "alice") @NotBlank(message = "usernameOrEmail 不能为空") @Size(max = 128, message = "usernameOrEmail 长度不能超过 128 个字符") String usernameOrEmail,
 
-        @Schema(description = "密码", example = "Password123")
-        @NotBlank(message = "password 不能为空")
-        @Size(max = 72, message = "password 长度不能超过 72 个字符")
-        String password
-) {
+        @Schema(description = "密码", example = "Password123") @NotBlank(message = "password 不能为空") @Size(max = 72, message = "password 长度不能超过 72 个字符") String password) {
 }

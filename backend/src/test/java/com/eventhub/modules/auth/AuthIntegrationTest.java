@@ -9,10 +9,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.eventhub.infra.jwt.JwtTokenProvider;
-import com.eventhub.infra.jwt.model.AccessTokenClaims;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
@@ -23,6 +19,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -32,6 +29,11 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+
+import com.eventhub.infra.jwt.JwtTokenProvider;
+import com.eventhub.infra.jwt.model.AccessTokenClaims;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
  * 阶段 1 认证授权集成测试。
@@ -62,12 +64,11 @@ class AuthIntegrationTest {
         String email = nextEmail(username);
 
         mockMvc.perform(post("/api/v1/auth/register")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(toJson(Map.of(
-                                "username", username,
-                                "email", email,
-                                "password", "Password123"
-                        ))))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(toJson(Map.of(
+                        "username", username,
+                        "email", email,
+                        "password", "Password123"))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("COMMON-000"))
                 .andExpect(jsonPath("$.data.username").value(username))
@@ -86,12 +87,11 @@ class AuthIntegrationTest {
         register(username, nextEmail(username));
 
         mockMvc.perform(post("/api/v1/auth/register")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(toJson(Map.of(
-                                "username", username,
-                                "email", nextEmail(username + "x"),
-                                "password", "Password123"
-                        ))))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(toJson(Map.of(
+                        "username", username,
+                        "email", nextEmail(username + "x"),
+                        "password", "Password123"))))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("AUTH-409"))
                 .andExpect(jsonPath("$.message").value("用户名已存在"));
@@ -107,12 +107,11 @@ class AuthIntegrationTest {
         register(username, email);
 
         mockMvc.perform(post("/api/v1/auth/register")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(toJson(Map.of(
-                                "username", nextUsername("dupemailx"),
-                                "email", email,
-                                "password", "Password123"
-                        ))))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(toJson(Map.of(
+                        "username", nextUsername("dupemailx"),
+                        "email", email,
+                        "password", "Password123"))))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("AUTH-409"))
                 .andExpect(jsonPath("$.message").value("邮箱已存在"));
@@ -146,8 +145,7 @@ class AuthIntegrationTest {
 
             assertThat(List.of(
                     firstResult.get(10, TimeUnit.SECONDS),
-                    secondResult.get(10, TimeUnit.SECONDS)
-            )).containsExactlyInAnyOrder(200, 409);
+                    secondResult.get(10, TimeUnit.SECONDS))).containsExactlyInAnyOrder(200, 409);
         } finally {
             executorService.shutdownNow();
         }
@@ -162,11 +160,10 @@ class AuthIntegrationTest {
         register(username, nextEmail(username));
 
         mockMvc.perform(post("/api/v1/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(toJson(Map.of(
-                                "usernameOrEmail", username,
-                                "password", "Password123"
-                        ))))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(toJson(Map.of(
+                        "usernameOrEmail", username,
+                        "password", "Password123"))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("COMMON-000"))
                 .andExpect(jsonPath("$.data.accessToken", notNullValue()))
@@ -184,11 +181,10 @@ class AuthIntegrationTest {
         register(username, nextEmail(username));
 
         mockMvc.perform(post("/api/v1/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(toJson(Map.of(
-                                "usernameOrEmail", username,
-                                "password", "WrongPassword123"
-                        ))))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(toJson(Map.of(
+                        "usernameOrEmail", username,
+                        "password", "WrongPassword123"))))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value("AUTH-401"))
                 .andExpect(jsonPath("$.message").value("账号或密码错误"));
@@ -205,18 +201,17 @@ class AuthIntegrationTest {
 
         String adminToken = loginAndExtractToken("admin", "Admin123456");
         mockMvc.perform(patch("/api/v1/admin/users/{userId}/status", userId)
-                        .header(HttpHeaders.AUTHORIZATION, bearer(adminToken))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(toJson(Map.of("status", "DISABLED"))))
+                .header(HttpHeaders.AUTHORIZATION, bearer(adminToken))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(toJson(Map.of("status", "DISABLED"))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.status").value("DISABLED"));
 
         mockMvc.perform(post("/api/v1/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(toJson(Map.of(
-                                "usernameOrEmail", username,
-                                "password", "Password123"
-                        ))))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(toJson(Map.of(
+                        "usernameOrEmail", username,
+                        "password", "Password123"))))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code").value("AUTH-403"))
                 .andExpect(jsonPath("$.message").value("用户已被禁用"));
@@ -235,7 +230,8 @@ class AuthIntegrationTest {
     /**
      * 验证登出接口被明确建模为登录后接口。
      *
-     * <p>当前登出不在服务端吊销 token，但它仍表达“当前用户主动结束本地登录态”的协议语义，
+     * <p>
+     * 当前登出不在服务端吊销 token，但它仍表达“当前用户主动结束本地登录态”的协议语义，
      * 因此必须要求请求已经携带合法 Bearer token。
      */
     @Test
@@ -255,7 +251,7 @@ class AuthIntegrationTest {
         String token = loginAndExtractToken(username, "Password123");
 
         mockMvc.perform(get("/api/v1/admin/users")
-                        .header(HttpHeaders.AUTHORIZATION, bearer(token)))
+                .header(HttpHeaders.AUTHORIZATION, bearer(token)))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code").value("AUTH-403"));
     }
@@ -271,7 +267,7 @@ class AuthIntegrationTest {
         String expiredToken = jwtTokenProvider.generateAccessToken(claims, Duration.ofSeconds(-5));
 
         mockMvc.perform(get("/api/v1/me")
-                        .header(HttpHeaders.AUTHORIZATION, bearer(expiredToken)))
+                .header(HttpHeaders.AUTHORIZATION, bearer(expiredToken)))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value("AUTH-401"));
     }
@@ -286,7 +282,7 @@ class AuthIntegrationTest {
         String token = loginAndExtractToken(username, "Password123");
 
         mockMvc.perform(get("/api/v1/me")
-                        .header(HttpHeaders.AUTHORIZATION, bearer(tamperToken(token))))
+                .header(HttpHeaders.AUTHORIZATION, bearer(tamperToken(token))))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value("AUTH-401"));
     }
@@ -303,14 +299,14 @@ class AuthIntegrationTest {
 
         String adminToken = loginAndExtractToken("admin", "Admin123456");
         mockMvc.perform(patch("/api/v1/admin/users/{userId}/status", userId)
-                        .header(HttpHeaders.AUTHORIZATION, bearer(adminToken))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(toJson(Map.of("status", "DISABLED"))))
+                .header(HttpHeaders.AUTHORIZATION, bearer(adminToken))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(toJson(Map.of("status", "DISABLED"))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.status").value("DISABLED"));
 
         mockMvc.perform(get("/api/v1/me")
-                        .header(HttpHeaders.AUTHORIZATION, bearer(token)))
+                .header(HttpHeaders.AUTHORIZATION, bearer(token)))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value("AUTH-401"));
     }
@@ -325,7 +321,7 @@ class AuthIntegrationTest {
         String token = loginAndExtractToken(username, "Password123");
 
         mockMvc.perform(get("/api/v1/me")
-                        .header(HttpHeaders.AUTHORIZATION, bearer(token)))
+                .header(HttpHeaders.AUTHORIZATION, bearer(token)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.username").value(username))
                 .andExpect(jsonPath("$.data.roles[0]").value("USER"));
@@ -339,7 +335,7 @@ class AuthIntegrationTest {
         String adminToken = loginAndExtractToken("admin", "Admin123456");
 
         mockMvc.perform(get("/api/v1/admin/users")
-                        .header(HttpHeaders.AUTHORIZATION, bearer(adminToken)))
+                .header(HttpHeaders.AUTHORIZATION, bearer(adminToken)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data[0].username").value("admin"))
                 .andExpect(jsonPath("$.data[0].roles[0]").value("ADMIN"))
@@ -348,12 +344,11 @@ class AuthIntegrationTest {
 
     private JsonNode register(String username, String email) throws Exception {
         MvcResult result = mockMvc.perform(post("/api/v1/auth/register")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(toJson(Map.of(
-                                "username", username,
-                                "email", email,
-                                "password", "Password123"
-                        ))))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(toJson(Map.of(
+                        "username", username,
+                        "email", email,
+                        "password", "Password123"))))
                 .andExpect(status().isOk())
                 .andReturn();
         return objectMapper.readTree(result.getResponse().getContentAsString()).path("data");
@@ -361,12 +356,11 @@ class AuthIntegrationTest {
 
     private int registerAndReturnStatus(String username, String email) throws Exception {
         return mockMvc.perform(post("/api/v1/auth/register")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(toJson(Map.of(
-                                "username", username,
-                                "email", email,
-                                "password", "Password123"
-                        ))))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(toJson(Map.of(
+                        "username", username,
+                        "email", email,
+                        "password", "Password123"))))
                 .andReturn()
                 .getResponse()
                 .getStatus();
@@ -374,11 +368,10 @@ class AuthIntegrationTest {
 
     private String loginAndExtractToken(String usernameOrEmail, String password) throws Exception {
         MvcResult result = mockMvc.perform(post("/api/v1/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(toJson(Map.of(
-                                "usernameOrEmail", usernameOrEmail,
-                                "password", password
-                        ))))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(toJson(Map.of(
+                        "usernameOrEmail", usernameOrEmail,
+                        "password", password))))
                 .andExpect(status().isOk())
                 .andReturn();
         return objectMapper.readTree(result.getResponse().getContentAsString())

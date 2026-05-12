@@ -1,14 +1,17 @@
 package com.eventhub.modules.auth.mapper.param;
 
 import com.eventhub.modules.auth.enums.UserStatus;
+
 import lombok.Getter;
 import lombok.Setter;
 
 /**
  * 创建用户时传给 MyBatis 的持久化参数对象。
  *
- * <p>这里不用 {@code UserEntity} 的原因是：{@code UserEntity} 是不可变 record，更适合作为数据库行快照；
- * 而插入用户时需要让 MyBatis 把数据库生成的自增主键回填到对象上，所以需要一个可写的参数对象承接 {@code id}。</p>
+ * <p>
+ * 这里不用 {@code UserEntity} 的原因是：{@code UserEntity} 是不可变 record，更适合作为数据库行快照；
+ * 而插入用户时需要让 MyBatis 把数据库生成的自增主键回填到对象上，所以需要一个可写的参数对象承接 {@code id}。
+ * </p>
  */
 @Getter
 @Setter
@@ -50,8 +53,8 @@ public class UserCreateParam {
     /**
      * 构造一个默认启用的普通用户插入参数。
      *
-     * @param username 用户名
-     * @param email 邮箱
+     * @param username     用户名
+     * @param email        邮箱
      * @param passwordHash BCrypt 密码哈希
      * @return 可交给 MyBatis 执行插入的参数对象
      */

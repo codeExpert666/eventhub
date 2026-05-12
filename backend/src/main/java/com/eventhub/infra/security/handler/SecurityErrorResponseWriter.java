@@ -69,11 +69,11 @@ public class SecurityErrorResponseWriter {
         //
         // 最终客户端收到的响应会类似：
         // {
-        //   "code": "AUTH-401",
-        //   "message": "认证失败",
-        //   "data": null,
-        //   "requestId": "当前请求追踪 ID",
-        //   "timestamp": "响应生成时间"
+        // "code": "AUTH-401",
+        // "message": "认证失败",
+        // "data": null,
+        // "requestId": "当前请求追踪 ID",
+        // "timestamp": "响应生成时间"
         // }
         objectMapper.writeValue(response.getWriter(), ApiResponse.failure(errorCode, message, null));
     }

@@ -1,6 +1,7 @@
 package com.eventhub.modules.auth.dto.request;
 
 import com.eventhub.modules.auth.enums.UserStatus;
+
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 
@@ -12,8 +13,5 @@ import jakarta.validation.constraints.NotNull;
  */
 @Schema(description = "更新用户状态请求")
 public record UpdateUserStatusRequest(
-        @Schema(description = "目标用户状态", example = "DISABLED")
-        @NotNull(message = "status 不能为空")
-        UserStatus status
-) {
+        @Schema(description = "目标用户状态", example = "DISABLED") @NotNull(message = "status 不能为空") UserStatus status) {
 }

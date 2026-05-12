@@ -1,14 +1,7 @@
 package com.eventhub.modules.auth.controller;
 
-import com.eventhub.common.api.ApiResponse;
-import com.eventhub.modules.auth.dto.request.UpdateUserStatusRequest;
-import com.eventhub.modules.auth.service.AuthService;
-import com.eventhub.modules.auth.vo.UserInfo;
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.validation.Valid;
 import java.util.List;
-import lombok.RequiredArgsConstructor;
+
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -16,6 +9,16 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import com.eventhub.common.api.ApiResponse;
+import com.eventhub.modules.auth.dto.request.UpdateUserStatusRequest;
+import com.eventhub.modules.auth.service.AuthService;
+import com.eventhub.modules.auth.vo.UserInfo;
+
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 
 /**
  * 管理员用户管理接口。
@@ -44,7 +47,7 @@ public class AdminUserController {
     /**
      * 更新用户状态。
      *
-     * @param userId 用户主键
+     * @param userId  用户主键
      * @param request 状态更新请求
      * @return 更新后的用户摘要
      */

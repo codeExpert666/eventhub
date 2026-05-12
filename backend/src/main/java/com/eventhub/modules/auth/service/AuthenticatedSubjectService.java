@@ -1,20 +1,24 @@
 package com.eventhub.modules.auth.service;
 
+import java.util.List;
+
+import org.springframework.security.authentication.DisabledException;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.stereotype.Service;
+
 import com.eventhub.common.security.AuthenticatedSubject;
 import com.eventhub.common.security.AuthenticatedSubjectLoader;
 import com.eventhub.modules.auth.entity.UserEntity;
 import com.eventhub.modules.auth.enums.UserStatus;
 import com.eventhub.modules.auth.mapper.RoleMapper;
 import com.eventhub.modules.auth.mapper.UserMapper;
-import java.util.List;
+
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.authentication.DisabledException;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
-import org.springframework.stereotype.Service;
 
 /**
  * auth 模块提供的认证主体加载服务。
- * 该类是 auth 业务模型暴露给 infra.security 的窄适配层，负责查询最新用户状态和权限，但不处理 HTTP、Filter 或 JWT 细节。
+ * 该类是 auth 业务模型暴露给 infra.security 的窄适配层，负责查询最新用户状态和权限，但不处理 HTTP、Filter 或 JWT
+ * 细节。
  */
 @Service
 @RequiredArgsConstructor
@@ -43,8 +47,7 @@ public class AuthenticatedSubjectService implements AuthenticatedSubjectLoader {
         return new AuthenticatedSubject(
                 user.id(),
                 user.username(),
-                toAuthorities(roleMapper.findRoleCodesByUserId(user.id()))
-        );
+                toAuthorities(roleMapper.findRoleCodesByUserId(user.id())));
     }
 
     private List<String> toAuthorities(List<String> roleCodes) {

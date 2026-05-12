@@ -136,7 +136,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
          * 这里没有 token 不一定代表“立刻失败”：
          * - 登录、注册、健康检查、Swagger 等公开接口本来就不需要 token；
          * - 受保护接口如果没有 token，会在后续授权阶段触发 SecurityConfiguration 中注册的
-         *   AuthenticationEntryPoint 返回 401。
+         * AuthenticationEntryPoint 返回 401。
          */
         String token = resolveBearerToken(request);
         if (token == null) {
