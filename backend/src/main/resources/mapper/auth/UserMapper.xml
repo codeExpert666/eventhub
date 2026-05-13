@@ -5,22 +5,20 @@
 <mapper namespace="com.eventhub.modules.auth.mapper.UserMapper">
 
     <!--
-        users 表到 UserEntity record 的显式构造器映射。
+        users 表到 UserEntity 普通类的显式属性映射。
         虽然 application.yml 已开启下划线转驼峰，但这里仍使用 resultMap：
         1. 让学习阶段可以清楚看到每个数据库字段如何进入 Java 持久化对象；
-        2. 对 record 这类不可变对象，构造器参数顺序和值类型更值得显式声明；
+        2. 保证 UserEntity 字段与 users 表字段逐列对应，避免读取字段遗漏；
         3. 后续字段增加时，Review 可以直接检查映射是否同步更新。
     -->
     <resultMap id="UserEntityResultMap" type="com.eventhub.modules.auth.entity.UserEntity">
-        <constructor>
-            <idArg column="id" javaType="java.lang.Long"/>
-            <arg column="username" javaType="java.lang.String"/>
-            <arg column="email" javaType="java.lang.String"/>
-            <arg column="password_hash" javaType="java.lang.String"/>
-            <arg column="status" javaType="com.eventhub.modules.auth.enums.UserStatus"/>
-            <arg column="created_at" javaType="java.time.LocalDateTime"/>
-            <arg column="updated_at" javaType="java.time.LocalDateTime"/>
-        </constructor>
+        <id property="id" column="id" javaType="java.lang.Long"/>
+        <result property="username" column="username" javaType="java.lang.String"/>
+        <result property="email" column="email" javaType="java.lang.String"/>
+        <result property="passwordHash" column="password_hash" javaType="java.lang.String"/>
+        <result property="status" column="status" javaType="com.eventhub.modules.auth.enums.UserStatus"/>
+        <result property="createdAt" column="created_at" javaType="java.time.LocalDateTime"/>
+        <result property="updatedAt" column="updated_at" javaType="java.time.LocalDateTime"/>
     </resultMap>
 
     <sql id="UserColumns">
@@ -40,11 +38,11 @@
     </select>
 
     <!--
-        useGeneratedKeys 会读取数据库生成的自增主键，并回填到 UserCreateParam.id。
+        useGeneratedKeys 会读取数据库生成的自增主键，并回填到 UserEntity.id。
         keyColumn 显式限定回填列为 id，避免不同数据库驱动返回额外 generated keys 时产生歧义。
     -->
     <insert id="insert"
-            parameterType="com.eventhub.modules.auth.mapper.param.UserCreateParam"
+            parameterType="com.eventhub.modules.auth.entity.UserEntity"
             useGeneratedKeys="true"
             keyProperty="id"
             keyColumn="id">

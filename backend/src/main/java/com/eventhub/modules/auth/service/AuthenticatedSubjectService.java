@@ -41,13 +41,13 @@ public class AuthenticatedSubjectService implements AuthenticatedSubjectLoader {
     public AuthenticatedSubject loadBySubjectId(Long subjectId) {
         UserEntity user = userMapper.findById(subjectId)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found: " + subjectId));
-        if (user.status() == UserStatus.DISABLED) {
+        if (user.getStatus() == UserStatus.DISABLED) {
             throw new DisabledException("User is disabled: " + subjectId);
         }
         return new AuthenticatedSubject(
-                user.id(),
-                user.username(),
-                toAuthorities(roleMapper.findRoleCodesByUserId(user.id())));
+                user.getId(),
+                user.getUsername(),
+                toAuthorities(roleMapper.findRoleCodesByUserId(user.getId())));
     }
 
     private List<String> toAuthorities(List<String> roleCodes) {

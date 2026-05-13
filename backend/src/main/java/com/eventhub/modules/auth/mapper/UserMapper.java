@@ -8,7 +8,6 @@ import org.apache.ibatis.annotations.Param;
 
 import com.eventhub.modules.auth.entity.UserEntity;
 import com.eventhub.modules.auth.enums.UserStatus;
-import com.eventhub.modules.auth.mapper.param.UserCreateParam;
 
 /**
  * users 表数据访问入口。
@@ -37,10 +36,10 @@ public interface UserMapper {
     /**
      * 创建用户并返回数据库生成的主键。
      *
-     * @param param 用户创建参数，MyBatis 会把生成的 id 回填到该对象中
+     * @param user 用户实体，MyBatis 会把生成的 id 回填到该对象中
      * @return 受影响行数
      */
-    int insert(UserCreateParam param);
+    int insert(UserEntity user);
 
     /**
      * 根据用户名或邮箱查询用户。

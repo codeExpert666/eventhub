@@ -20,7 +20,6 @@ import com.eventhub.modules.auth.enums.UserStatus;
 import com.eventhub.modules.auth.exception.AuthException;
 import com.eventhub.modules.auth.mapper.RoleMapper;
 import com.eventhub.modules.auth.mapper.UserMapper;
-import com.eventhub.modules.auth.mapper.param.UserCreateParam;
 import com.eventhub.modules.auth.vo.LoginResponse;
 import com.eventhub.modules.auth.vo.UserInfo;
 
@@ -61,21 +60,21 @@ public class AuthService {
         }
 
         try {
-            UserCreateParam createParam = UserCreateParam.enabledUser(
+            UserEntity user = UserEntity.enabledUser(
                     username,
                     email,
                     passwordEncoder.encode(request.password()));
-            int affectedRows = userMapper.insert(createParam);
-            if (affectedRows != 1 || createParam.getId() == null) {
+            int affectedRows = userMapper.insert(user);
+            if (affectedRows != 1 || user.getId() == null) {
                 /*
-                 * 正常情况下 MyBatis 会通过数据库 generated keys 把 users.id 回填到参数对象。
+                 * 正常情况下 MyBatis 会通过数据库 generated keys 把 users.id 回填到用户实体。
                  * 如果这里没有拿到 id，说明 Mapper XML、驱动或数据库主键回填配置出现了基础设施问题，
                  * 需要快速失败，避免继续写入 user_roles 造成难以排查的半完成注册流程。
                  */
                 throw new IllegalStateException("Failed to retrieve generated user id");
             }
 
-            Long userId = createParam.getId();
+            Long userId = user.getId();
             RoleEntity userRole = roleMapper.findByCode(ROLE_USER)
                     .orElseThrow(() -> new IllegalStateException("Default USER role is missing"));
             roleMapper.addRoleToUser(userId, userRole.id());
@@ -101,10 +100,10 @@ public class AuthService {
         UserEntity user = userMapper.findByUsernameOrEmail(usernameOrEmail)
                 .orElseThrow(AuthException::badCredentials);
 
-        if (!passwordEncoder.matches(request.password(), user.passwordHash())) {
+        if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {
             throw AuthException.badCredentials();
         }
-        if (user.status() == UserStatus.DISABLED) {
+        if (user.getStatus() == UserStatus.DISABLED) {
             throw AuthException.disabledUser();
         }
 
@@ -164,11 +163,11 @@ public class AuthService {
 
     private UserInfo toUserInfo(UserEntity user) {
         return new UserInfo(
-                user.id(),
-                user.username(),
-                user.email(),
-                user.status(),
-                roleMapper.findRoleCodesByUserId(user.id()));
+                user.getId(),
+                user.getUsername(),
+                user.getEmail(),
+                user.getStatus(),
+                roleMapper.findRoleCodesByUserId(user.getId()));
     }
 
     private String normalizeUsername(String username) {
