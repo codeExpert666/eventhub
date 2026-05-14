@@ -95,7 +95,7 @@ public class AuthService {
              */
             RoleEntity userRole = roleMapper.findByCode(ROLE_USER)
                     .orElseThrow(() -> new IllegalStateException("Default USER role is missing"));
-            roleMapper.addRoleToUser(userId, userRole.id());
+            roleMapper.addRoleToUser(userId, userRole.getId());
             return getUserInfo(userId);
         } catch (DuplicateKeyException exception) {
             /*

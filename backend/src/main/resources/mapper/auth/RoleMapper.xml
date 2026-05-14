@@ -4,19 +4,25 @@
         "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.eventhub.modules.auth.mapper.RoleMapper">
 
-    <!-- roles 表到 RoleEntity record 的显式构造器映射，和 UserMapper 保持同一种 MyBatis 使用规范。 -->
+    <!--
+        roles 表到 RoleEntity 普通类的显式属性映射。
+        这里保留逐列映射，目的和 UserMapper 一致：让实体字段与数据库字段的一一对应关系可审查。
+    -->
     <resultMap id="RoleEntityResultMap" type="com.eventhub.modules.auth.entity.RoleEntity">
-        <constructor>
-            <idArg column="id" javaType="java.lang.Long"/>
-            <arg column="code" javaType="java.lang.String"/>
-            <arg column="name" javaType="java.lang.String"/>
-            <arg column="description" javaType="java.lang.String"/>
-            <arg column="created_at" javaType="java.time.LocalDateTime"/>
-        </constructor>
+        <id property="id" column="id" javaType="java.lang.Long"/>
+        <result property="code" column="code" javaType="java.lang.String"/>
+        <result property="name" column="name" javaType="java.lang.String"/>
+        <result property="description" column="description" javaType="java.lang.String"/>
+        <result property="createdAt" column="created_at" javaType="java.time.LocalDateTime"/>
     </resultMap>
 
+    <sql id="RoleColumns">
+        id, code, name, description, created_at
+    </sql>
+
     <select id="findByCode" resultMap="RoleEntityResultMap">
-        SELECT id, code, name, description, created_at
+        SELECT
+        <include refid="RoleColumns"/>
         FROM roles
         WHERE code = #{code}
     </select>
