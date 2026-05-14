@@ -44,6 +44,15 @@ public class AuthService {
      * 注册普通用户。
      * 用户创建和默认 USER 角色绑定放在同一事务内，避免出现账号已创建但没有角色的半完成状态。
      *
+     * <p>
+     * 注册失败按“业务可预期失败”和“系统不变量失败”分层处理：
+     * <ul>
+     *     <li>用户名、邮箱重复以及并发唯一键冲突属于调用方可理解的业务失败，
+     *     会转换成 AuthException 返回稳定的 409 响应。</li>
+     *     <li>用户插入行数异常、数据库生成主键未回填、默认 USER 角色缺失属于服务端配置或基础设施异常。
+     *     这里故意使用 IllegalStateException 快速失败，触发事务回滚，并交给全局 Exception 兜底返回 500 并记录日志。</li>
+     * </ul>
+     *
      * @param request 注册请求
      * @return 注册后的用户摘要
      */
@@ -63,18 +72,27 @@ public class AuthService {
             UserEntity user = UserEntity.enabledUser(
                     username,
                     email,
-                    passwordEncoder.encode(request.password()));
+                    passwordEncoder.encode(request.password())
+            );
             int affectedRows = userMapper.insert(user);
             if (affectedRows != 1 || user.getId() == null) {
                 /*
                  * 正常情况下 MyBatis 会通过数据库 generated keys 把 users.id 回填到用户实体。
                  * 如果这里没有拿到 id，说明 Mapper XML、驱动或数据库主键回填配置出现了基础设施问题，
-                 * 需要快速失败，避免继续写入 user_roles 造成难以排查的半完成注册流程。
+                 * 而不是普通账号冲突这类业务失败。
+                 *
+                 * 因此这里故意抛出 IllegalStateException，而不是 AuthException：
+                 * 1. 事务会回滚，避免继续写入 user_roles 造成难以排查的半完成注册流程；
+                 * 2. 全局异常处理器会把它归入未知系统异常，记录完整堆栈，并向客户端返回统一的 INTERNAL_ERROR。
                  */
                 throw new IllegalStateException("Failed to retrieve generated user id");
             }
 
             Long userId = user.getId();
+            /**
+             * 若默认角色 USER 缺失，同样故意抛出 IllegalStateException 快速失败
+             * 理由同上
+             */
             RoleEntity userRole = roleMapper.findByCode(ROLE_USER)
                     .orElseThrow(() -> new IllegalStateException("Default USER role is missing"));
             roleMapper.addRoleToUser(userId, userRole.id());
@@ -112,7 +130,8 @@ public class AuthService {
                 jwtTokenProvider.generateAccessToken(new AccessTokenClaims(userInfo.id())),
                 "Bearer",
                 jwtTokenProvider.accessTokenTtlSeconds(),
-                userInfo);
+                userInfo
+        );
     }
 
     /**
@@ -167,7 +186,8 @@ public class AuthService {
                 user.getUsername(),
                 user.getEmail(),
                 user.getStatus(),
-                roleMapper.findRoleCodesByUserId(user.getId()));
+                roleMapper.findRoleCodesByUserId(user.getId())
+        );
     }
 
     private String normalizeUsername(String username) {
@@ -175,6 +195,10 @@ public class AuthService {
     }
 
     private String normalizeEmail(String email) {
+        /*
+         * Locale.ROOT 表示使用语言无关的根区域设置进行小写转换。
+         * 邮箱归一化属于系统规则，不应受服务器默认语言环境影响；例如土耳其语环境下字母 I/i 的大小写转换规则与英文不同。
+         */
         return email.trim().toLowerCase(Locale.ROOT);
     }
 

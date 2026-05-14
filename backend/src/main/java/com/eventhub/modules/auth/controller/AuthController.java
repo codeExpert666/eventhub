@@ -22,6 +22,12 @@ import lombok.RequiredArgsConstructor;
 /**
  * 认证接口控制器。
  * 负责暴露注册、登录和无状态登出入口，具体账号校验、密码加密和 token 签发由服务层完成。
+ *
+ * <p>请求体入参约定：
+ * {@code @RequestBody} 负责把 HTTP JSON 请求体反序列化为请求 DTO；
+ * {@code @Valid} 负责触发 DTO 字段上的 Jakarta Bean Validation 规则，例如 {@code @NotBlank}、{@code @Email}
+ * 和 {@code @Size}。注册和登录属于强输入约束接口，因此不能只依赖 {@code @RequestBody}；否则 JSON 虽然可以被绑定为
+ * Java 对象，但 DTO 上声明的字段校验不会在 Controller 边界自动执行，非法输入可能继续进入服务层。
  */
 @Tag(name = "Auth", description = "注册登录与认证接口")
 @RestController

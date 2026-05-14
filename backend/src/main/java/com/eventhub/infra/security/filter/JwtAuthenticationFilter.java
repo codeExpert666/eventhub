@@ -129,7 +129,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     protected void doFilterInternal(
             HttpServletRequest request,
             HttpServletResponse response,
-            FilterChain filterChain) throws ServletException, IOException {
+            FilterChain filterChain
+    ) throws ServletException, IOException {
         /*
          * 1. 尝试从请求头中解析 Bearer Token。
          *
@@ -179,7 +180,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
                     subject,
                     null,
-                    toGrantedAuthorities(subject));
+                    toGrantedAuthorities(subject)
+            );
 
             /*
              * 5. 保存请求来源等细节信息。
@@ -227,7 +229,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             authenticationEntryPoint.commence(
                     request,
                     response,
-                    new BadCredentialsException("Invalid JWT access token", exception));
+                    new BadCredentialsException("Invalid JWT access token", exception)
+            );
         }
     }
 

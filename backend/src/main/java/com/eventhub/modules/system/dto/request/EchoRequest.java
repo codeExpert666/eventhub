@@ -37,11 +37,16 @@ public record EchoRequest(
          * 通过 {@link Schema} 为 Swagger/OpenAPI 文档补充字段语义和示例值，
          * 让接口使用者在 Swagger UI 中能直接看到“message”代表什么、推荐如何传值。
          */
-        @Schema(description = "回显消息", example = "hello eventhub") @NotBlank(message = "message 不能为空") @Size(max = 64, message = "message 长度不能超过 64") String message,
+        @Schema(description = "回显消息", example = "hello eventhub")
+        @NotBlank(message = "message 不能为空")
+        @Size(max = 64, message = "message 长度不能超过 64")
+        String message,
 
         /*
          * 该字段同样使用 {@link Schema} 描述接口文档中的展示方式。
          * 因为它是可选字段，所以这里只补充文档说明和示例，不增加 {@link NotBlank} 约束。
          */
-        @Schema(description = "可选标签", example = "bootstrap") @Size(max = 32, message = "tag 长度不能超过 32") String tag) {
+        @Schema(description = "可选标签", example = "bootstrap")
+        @Size(max = 32, message = "tag 长度不能超过 32")
+        String tag) {
 }

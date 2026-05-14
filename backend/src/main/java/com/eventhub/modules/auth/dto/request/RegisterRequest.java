@@ -16,9 +16,21 @@ import jakarta.validation.constraints.Size;
  */
 @Schema(description = "用户注册请求")
 public record RegisterRequest(
-        @Schema(description = "用户名", example = "alice") @NotBlank(message = "username 不能为空") @Size(min = 3, max = 32, message = "username 长度必须在 3 到 32 个字符之间") @Pattern(regexp = "^[A-Za-z0-9_]+$", message = "username 只能包含字母、数字和下划线") String username,
+        @Schema(description = "用户名", example = "alice")
+        @NotBlank(message = "username 不能为空")
+        @Size(min = 3, max = 32, message = "username 长度必须在 3 到 32 个字符之间")
+        @Pattern(regexp = "^[A-Za-z0-9_]+$", message = "username 只能包含字母、数字和下划线")
+        String username,
 
-        @Schema(description = "邮箱", example = "alice@example.com") @NotBlank(message = "email 不能为空") @Email(message = "email 格式不合法") @Size(max = 128, message = "email 长度不能超过 128 个字符") String email,
+        @Schema(description = "邮箱", example = "alice@example.com")
+        @NotBlank(message = "email 不能为空")
+        @Email(message = "email 格式不合法")
+        @Size(max = 128, message = "email 长度不能超过 128 个字符")
+        String email,
 
-        @Schema(description = "密码，至少 8 位并同时包含字母和数字", example = "Password123") @NotBlank(message = "password 不能为空") @Size(min = 8, max = 72, message = "password 长度必须在 8 到 72 个字符之间") @Pattern(regexp = "^(?=.*[A-Za-z])(?=.*\\d).+$", message = "password 至少包含字母和数字") String password) {
+        @Schema(description = "密码，至少 8 位并同时包含字母和数字", example = "Password123")
+        @NotBlank(message = "password 不能为空")
+        @Size(min = 8, max = 72, message = "password 长度必须在 8 到 72 个字符之间")
+        @Pattern(regexp = "^(?=.*[A-Za-z])(?=.*\\d).+$", message = "password 至少包含字母和数字")
+        String password) {
 }
