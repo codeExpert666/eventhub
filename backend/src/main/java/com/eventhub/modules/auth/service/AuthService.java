@@ -49,7 +49,7 @@ public class AuthService {
      * <ul>
      *     <li>用户名、邮箱重复以及并发唯一键冲突属于调用方可理解的业务失败，
      *     会转换成 AuthException 返回稳定的 409 响应。</li>
-     *     <li>用户插入行数异常、数据库生成主键未回填、默认 USER 角色缺失属于服务端配置或基础设施异常。
+     *     <li>用户插入行数异常、数据库生成主键未回填、默认 USER 角色缺失或默认角色绑定失败属于服务端配置或基础设施异常。
      *     这里故意使用 IllegalStateException 快速失败，触发事务回滚，并交给全局 Exception 兜底返回 500 并记录日志。</li>
      * </ul>
      *
@@ -89,13 +89,25 @@ public class AuthService {
             }
 
             Long userId = user.getId();
-            /**
-             * 若默认角色 USER 缺失，同样故意抛出 IllegalStateException 快速失败
-             * 理由同上
+            /*
+             * findByCode 返回 Optional<RoleEntity>，表示按唯一角色编码查询时可能找不到记录。
+             * orElseThrow 的含义是：如果查到了 USER 角色，就取出 RoleEntity；如果没查到，就抛出指定异常。
+             *
+             * 默认 USER 角色属于系统初始化数据，是注册流程必须满足的系统不变量。
+             * 如果它缺失，说明不是用户请求参数错误，而是数据库初始化或配置异常；
+             * 因此这里继续使用 IllegalStateException 快速失败，并依赖事务回滚避免创建“无默认角色”的用户。
              */
             RoleEntity userRole = roleMapper.findByCode(ROLE_USER)
                     .orElseThrow(() -> new IllegalStateException("Default USER role is missing"));
-            roleMapper.addRoleToUser(userId, userRole.getId());
+            int roleBindingRows = roleMapper.addRoleToUser(userId, userRole.getId());
+            if (roleBindingRows != 1) {
+                /*
+                 * 普通注册只应写入一条 user_roles 关系。
+                 * 如果影响行数不是 1，即使数据库没有抛异常，也说明默认角色绑定没有达到注册流程的系统不变量；
+                 * 这里继续抛出运行时异常，让事务回滚 users 插入，避免提交一个没有默认角色的用户。
+                 */
+                throw new IllegalStateException("Failed to bind default USER role");
+            }
             return getUserInfo(userId);
         } catch (DuplicateKeyException exception) {
             /*

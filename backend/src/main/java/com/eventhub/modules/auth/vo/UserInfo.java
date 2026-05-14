@@ -18,15 +18,21 @@ import io.swagger.v3.oas.annotations.media.Schema;
  */
 @Schema(description = "用户摘要")
 public record UserInfo(
-        @Schema(description = "用户 ID", example = "1") Long id,
+        @Schema(description = "用户 ID", example = "1")
+        Long id,
 
-        @Schema(description = "用户名", example = "alice") String username,
+        @Schema(description = "用户名", example = "alice")
+        String username,
 
-        @Schema(description = "邮箱", example = "alice@example.com") String email,
+        @Schema(description = "邮箱", example = "alice@example.com")
+        String email,
 
-        @Schema(description = "用户状态", example = "ENABLED") UserStatus status,
+        @Schema(description = "用户状态", example = "ENABLED")
+        UserStatus status,
 
-        @Schema(description = "角色编码集合", example = "[\"USER\"]") List<String> roles) {
+        @Schema(description = "角色编码集合", example = "[\"USER\"]")
+        List<String> roles
+) {
     public UserInfo {
         roles = roles == null ? List.of() : List.copyOf(roles);
     }
