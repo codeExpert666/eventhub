@@ -175,7 +175,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
              * - credentials：凭证。JWT 已经校验完成，不需要再保存密码或 token，因此传 null；
              * - authorities：当前用户权限，例如 ROLE_USER、ROLE_ADMIN。
              *
-             * 使用带 authorities 的构造器时，Spring Security 会认为该 Authentication 已认证。
+             * 需要注意 UsernamePasswordAuthenticationToken 的两个常见构造语义：
+             * - 两参构造器通常表示“待认证的登录请求”，isAuthenticated() 默认为 false；
+             * - 三参构造器通常表示“已经认证成功的用户身份”，会把 isAuthenticated() 置为 true。
+             *
+             * 因此前面完成 JWT 校验、用户状态校验和权限加载后，这里使用带 authorities 的三参构造器，
+             * 等价于告诉 Spring Security：当前请求已经完成“你是谁”的认证判断。
+             * 后续 authenticated()、hasRole(...)、@PreAuthorize(...) 等授权规则，会继续基于
+             * SecurityContext 中这个已认证 Authentication 及其 authorities 判断“你能不能访问”。
              */
             UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
                     subject,

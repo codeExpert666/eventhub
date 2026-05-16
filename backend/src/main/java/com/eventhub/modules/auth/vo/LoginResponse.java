@@ -13,11 +13,16 @@ import io.swagger.v3.oas.annotations.media.Schema;
  */
 @Schema(description = "登录成功响应")
 public record LoginResponse(
-        @Schema(description = "JWT access token") String accessToken,
+        @Schema(description = "JWT access token")
+        String accessToken,
 
-        @Schema(description = "token 类型", example = "Bearer") String tokenType,
+        @Schema(description = "token 类型", example = "Bearer")
+        String tokenType,
 
-        @Schema(description = "有效秒数", example = "1800") long expiresIn,
+        @Schema(description = "有效秒数", example = "1800")
+        long expiresIn,
 
-        @Schema(description = "当前登录用户") UserInfo user) {
+        @Schema(description = "当前登录用户")
+        UserInfo user
+) {
 }
