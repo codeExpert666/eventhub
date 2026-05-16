@@ -1,13 +1,12 @@
 package com.eventhub.modules.auth.controller;
 
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.eventhub.common.api.ApiResponse;
-import com.eventhub.common.security.AuthenticatedSubject;
+import com.eventhub.infra.security.support.SecurityUtils;
 import com.eventhub.modules.auth.dto.request.LoginRequest;
 import com.eventhub.modules.auth.dto.request.RegisterRequest;
 import com.eventhub.modules.auth.service.AuthService;
@@ -66,24 +65,17 @@ public class AuthController {
      * 当前 access token 不落库，服务端无法主动吊销已签发 token，因此该接口表达客户端删除本地 token 的协议语义。
      *
      * <p>
-     * {@code @AuthenticationPrincipal} 会从 Spring Security 当前请求的 {@code Authentication.principal}
-     * 中取出登录主体，并自动注入到 Controller 方法参数里。当前项目中，这个 principal 是
-     * {@link AuthenticatedSubject}，由 JwtAuthenticationFilter 在 JWT 校验成功后写入 SecurityContext。
+     * 当前用户从 {@link SecurityUtils} 读取。真正要求登出接口必须登录的是
+     * SecurityConfig 中对 {@code POST /api/v1/auth/logout} 配置的 {@code authenticated()} 规则。
+     * 因此进入该方法时应已存在认证主体，服务层保留登出业务语义入口，方便后续扩展审计或 token 吊销。
      * </p>
      *
-     * <p>
-     * 该注解只负责“取当前用户”，不负责“要求必须登录”。真正要求登出接口必须登录的是
-     * SecurityConfiguration 中对 {@code POST /api/v1/auth/logout} 配置的 {@code authenticated()} 规则。
-     * 因此即使当前方法暂时没有使用 authenticatedSubject 参数，它仍然清楚表达了接口语义：
-     * 这是当前已登录用户的登出入口，也为后续记录登出日志、审计操作或 token 吊销预留当前用户信息。
-     * </p>
-     *
-     * @param authenticatedSubject 当前认证主体，来源于 SecurityContext 中 Authentication.principal
      * @return 空成功响应
      */
     @Operation(summary = "用户登出", description = "无状态 JWT 登出入口，客户端应删除本地 token")
     @PostMapping("/logout")
-    public ApiResponse<Void> logout(@AuthenticationPrincipal AuthenticatedSubject authenticatedSubject) {
+    public ApiResponse<Void> logout() {
+        authService.logout(SecurityUtils.getRequiredCurrentPrincipal());
         return ApiResponse.success();
     }
 }

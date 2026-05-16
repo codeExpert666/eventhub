@@ -1,12 +1,11 @@
 package com.eventhub.modules.auth.controller;
 
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.eventhub.common.api.ApiResponse;
-import com.eventhub.common.security.AuthenticatedSubject;
+import com.eventhub.infra.security.support.SecurityUtils;
 import com.eventhub.modules.auth.service.AuthService;
 import com.eventhub.modules.auth.vo.UserInfo;
 
@@ -29,12 +28,11 @@ public class UserController {
     /**
      * 获取当前登录用户。
      *
-     * @param authenticatedSubject Spring Security 上下文中的当前认证主体
      * @return 当前用户摘要
      */
     @Operation(summary = "获取当前用户", description = "根据 Bearer token 返回当前登录用户信息")
     @GetMapping("/me")
-    public ApiResponse<UserInfo> me(@AuthenticationPrincipal AuthenticatedSubject authenticatedSubject) {
-        return ApiResponse.success(authService.currentUser(authenticatedSubject));
+    public ApiResponse<UserInfo> me() {
+        return ApiResponse.success(authService.currentUser(SecurityUtils.getRequiredCurrentPrincipal()));
     }
 }

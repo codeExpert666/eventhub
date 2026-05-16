@@ -30,8 +30,8 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
-import com.eventhub.infra.jwt.JwtTokenProvider;
-import com.eventhub.infra.jwt.model.AccessTokenClaims;
+import com.eventhub.infra.security.jwt.JwtClaims;
+import com.eventhub.infra.security.jwt.JwtCodec;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -53,7 +53,7 @@ class AuthIntegrationTest {
     private ObjectMapper objectMapper;
 
     @Autowired
-    private JwtTokenProvider jwtTokenProvider;
+    private JwtCodec jwtCodec;
 
     /**
      * 验证注册成功后会返回用户摘要，并默认绑定 USER 角色。
@@ -263,8 +263,8 @@ class AuthIntegrationTest {
     void expiredTokenShouldReturnUnauthorized() throws Exception {
         String username = nextUsername("expired");
         JsonNode registeredUser = register(username, nextEmail(username));
-        AccessTokenClaims claims = new AccessTokenClaims(registeredUser.path("id").asLong());
-        String expiredToken = jwtTokenProvider.generateAccessToken(claims, Duration.ofSeconds(-5));
+        JwtClaims claims = new JwtClaims(registeredUser.path("id").asLong());
+        String expiredToken = jwtCodec.generateAccessToken(claims, Duration.ofSeconds(-5));
 
         mockMvc.perform(get("/api/v1/me")
                 .header(HttpHeaders.AUTHORIZATION, bearer(expiredToken)))

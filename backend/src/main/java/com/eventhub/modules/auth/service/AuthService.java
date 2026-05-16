@@ -1,174 +1,61 @@
 package com.eventhub.modules.auth.service;
 
 import java.util.List;
-import java.util.Locale;
 
-import org.springframework.dao.DuplicateKeyException;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import com.eventhub.common.security.AuthenticatedSubject;
-import com.eventhub.infra.jwt.JwtTokenProvider;
-import com.eventhub.infra.jwt.model.AccessTokenClaims;
+import com.eventhub.infra.security.principal.AuthenticatedPrincipal;
 import com.eventhub.modules.auth.dto.request.LoginRequest;
 import com.eventhub.modules.auth.dto.request.RegisterRequest;
 import com.eventhub.modules.auth.dto.request.UpdateUserStatusRequest;
-import com.eventhub.modules.auth.entity.RoleEntity;
-import com.eventhub.modules.auth.entity.UserEntity;
-import com.eventhub.modules.auth.enums.UserStatus;
-import com.eventhub.modules.auth.exception.AuthException;
-import com.eventhub.modules.auth.mapper.RoleMapper;
-import com.eventhub.modules.auth.mapper.UserMapper;
 import com.eventhub.modules.auth.vo.LoginResponse;
 import com.eventhub.modules.auth.vo.UserInfo;
 
-import lombok.RequiredArgsConstructor;
-
 /**
- * 认证授权应用服务。
- * 负责注册、登录、当前用户资料查询和管理员用户管理；JWT 过滤器所需的主体加载已拆到 AuthenticatedSubjectService。
+ * 认证授权应用服务接口。
+ *
+ * <p>
+ * Controller 依赖接口而不是具体实现，方便后续把 auth 能力拆成独立服务时，
+ * 保持 HTTP 层契约稳定，并逐步把实现替换成远程调用、消息驱动或独立认证服务适配器。
+ * </p>
  */
-@Service
-@RequiredArgsConstructor
-public class AuthService {
-
-    private static final String ROLE_USER = "USER";
-
-    private final UserMapper userMapper;
-    private final RoleMapper roleMapper;
-    private final PasswordEncoder passwordEncoder;
-    private final JwtTokenProvider jwtTokenProvider;
+public interface AuthService {
 
     /**
      * 注册普通用户。
-     * 用户创建和默认 USER 角色绑定放在同一事务内，避免出现账号已创建但没有角色的半完成状态。
-     *
-     * <p>
-     * 注册失败按“业务可预期失败”和“系统不变量失败”分层处理：
-     * <ul>
-     *     <li>用户名、邮箱重复以及并发唯一键冲突属于调用方可理解的业务失败，
-     *     会转换成 AuthException 返回稳定的 409 响应。</li>
-     *     <li>用户插入行数异常、数据库生成主键未回填、默认 USER 角色缺失或默认角色绑定失败属于服务端配置或基础设施异常。
-     *     这里故意使用 IllegalStateException 快速失败，触发事务回滚，并交给全局 Exception 兜底返回 500 并记录日志。</li>
-     * </ul>
      *
      * @param request 注册请求
      * @return 注册后的用户摘要
      */
-    @Transactional
-    public UserInfo register(RegisterRequest request) {
-        String username = normalizeUsername(request.username());
-        String email = normalizeEmail(request.email());
-
-        if (userMapper.existsByUsername(username)) {
-            throw AuthException.duplicateUsername();
-        }
-        if (userMapper.existsByEmail(email)) {
-            throw AuthException.duplicateEmail();
-        }
-
-        try {
-            UserEntity user = UserEntity.enabledUser(
-                    username,
-                    email,
-                    passwordEncoder.encode(request.password())
-            );
-            int affectedRows = userMapper.insert(user);
-            if (affectedRows != 1 || user.getId() == null) {
-                /*
-                 * 正常情况下 MyBatis 会通过数据库 generated keys 把 users.id 回填到用户实体。
-                 * 如果这里没有拿到 id，说明 Mapper XML、驱动或数据库主键回填配置出现了基础设施问题，
-                 * 而不是普通账号冲突这类业务失败。
-                 *
-                 * 因此这里故意抛出 IllegalStateException，而不是 AuthException：
-                 * 1. 事务会回滚，避免继续写入 user_roles 造成难以排查的半完成注册流程；
-                 * 2. 全局异常处理器会把它归入未知系统异常，记录完整堆栈，并向客户端返回统一的 INTERNAL_ERROR。
-                 */
-                throw new IllegalStateException("Failed to retrieve generated user id");
-            }
-
-            Long userId = user.getId();
-            /*
-             * findByCode 返回 Optional<RoleEntity>，表示按唯一角色编码查询时可能找不到记录。
-             * orElseThrow 的含义是：如果查到了 USER 角色，就取出 RoleEntity；如果没查到，就抛出指定异常。
-             *
-             * 默认 USER 角色属于系统初始化数据，是注册流程必须满足的系统不变量。
-             * 如果它缺失，说明不是用户请求参数错误，而是数据库初始化或配置异常；
-             * 因此这里继续使用 IllegalStateException 快速失败，并依赖事务回滚避免创建“无默认角色”的用户。
-             */
-            RoleEntity userRole = roleMapper.findByCode(ROLE_USER)
-                    .orElseThrow(() -> new IllegalStateException("Default USER role is missing"));
-            int roleBindingRows = roleMapper.addRoleToUser(userId, userRole.getId());
-            if (roleBindingRows != 1) {
-                /*
-                 * 普通注册只应写入一条 user_roles 关系。
-                 * 如果影响行数不是 1，即使数据库没有抛异常，也说明默认角色绑定没有达到注册流程的系统不变量；
-                 * 这里继续抛出运行时异常，让事务回滚 users 插入，避免提交一个没有默认角色的用户。
-                 */
-                throw new IllegalStateException("Failed to bind default USER role");
-            }
-            return getUserInfo(userId);
-        } catch (DuplicateKeyException exception) {
-            /*
-             * 并发注册时，两个请求可能同时通过 exists 预检查。
-             * 数据库唯一约束是最终防线；这里把底层唯一键异常转换成稳定的业务提示。
-             */
-            throw AuthException.duplicateAccount();
-        }
-    }
+    UserInfo register(RegisterRequest request);
 
     /**
      * 用户登录。
-     * 登录失败时不区分账号不存在和密码错误，降低账号枚举风险。
      *
      * @param request 登录请求
      * @return 登录 token 与用户摘要
      */
-    public LoginResponse login(LoginRequest request) {
-        String usernameOrEmail = normalizeLoginIdentifier(request.usernameOrEmail());
-        UserEntity user = userMapper.findByUsernameOrEmail(usernameOrEmail)
-                .orElseThrow(AuthException::badCredentials);
-
-        if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {
-            throw AuthException.badCredentials();
-        }
-        if (user.getStatus() == UserStatus.DISABLED) {
-            throw AuthException.disabledUser();
-        }
-
-        UserInfo userInfo = toUserInfo(user);
-        return new LoginResponse(
-                jwtTokenProvider.generateAccessToken(new AccessTokenClaims(userInfo.id())),
-                "Bearer",
-                jwtTokenProvider.accessTokenTtlSeconds(),
-                userInfo
-        );
-    }
+    LoginResponse login(LoginRequest request);
 
     /**
-     * 根据认证上下文返回当前用户。
-     * 安全上下文只保存最小主体信息，接口响应需要回到 auth 模块查询最新用户资料并组装 UserInfo。
+     * 用户登出。
      *
-     * @param authenticatedSubject SecurityContext 中的当前认证主体
-     * @return 用户摘要
+     * @param principal 当前认证主体
      */
-    public UserInfo currentUser(AuthenticatedSubject authenticatedSubject) {
-        return getUserInfo(authenticatedSubject.subjectId());
-    }
+    void logout(AuthenticatedPrincipal principal);
+
+    /**
+     * 根据当前认证主体查询用户资料。
+     *
+     * @param principal 当前认证主体
+     * @return 当前用户摘要
+     */
+    UserInfo currentUser(AuthenticatedPrincipal principal);
 
     /**
      * 查询全部用户。
-     * 当前仅供管理员接口验证 RBAC 闭环，后续可继续补分页、筛选和排序。
      *
      * @return 用户摘要列表
      */
-    public List<UserInfo> listUsers() {
-        return userMapper.findAll()
-                .stream()
-                .map(this::toUserInfo)
-                .toList();
-    }
+    List<UserInfo> listUsers();
 
     /**
      * 管理员更新用户状态。
@@ -177,48 +64,5 @@ public class AuthService {
      * @param request 状态更新请求
      * @return 更新后的用户摘要
      */
-    @Transactional
-    public UserInfo updateStatus(Long userId, UpdateUserStatusRequest request) {
-        int affectedRows = userMapper.updateStatus(userId, request.status());
-        if (affectedRows == 0) {
-            throw AuthException.userNotFound();
-        }
-        return getUserInfo(userId);
-    }
-
-    private UserInfo getUserInfo(Long userId) {
-        UserEntity user = userMapper.findById(userId)
-                .orElseThrow(AuthException::userNotFound);
-        return toUserInfo(user);
-    }
-
-    private UserInfo toUserInfo(UserEntity user) {
-        return new UserInfo(
-                user.getId(),
-                user.getUsername(),
-                user.getEmail(),
-                user.getStatus(),
-                roleMapper.findRoleCodesByUserId(user.getId())
-        );
-    }
-
-    private String normalizeUsername(String username) {
-        return username.trim();
-    }
-
-    private String normalizeEmail(String email) {
-        /*
-         * Locale.ROOT 表示使用语言无关的根区域设置进行小写转换。
-         * 邮箱归一化属于系统规则，不应受服务器默认语言环境影响；例如土耳其语环境下字母 I/i 的大小写转换规则与英文不同。
-         */
-        return email.trim().toLowerCase(Locale.ROOT);
-    }
-
-    private String normalizeLoginIdentifier(String usernameOrEmail) {
-        String trimmed = usernameOrEmail.trim();
-        if (trimmed.contains("@")) {
-            return trimmed.toLowerCase(Locale.ROOT);
-        }
-        return trimmed;
-    }
+    UserInfo updateStatus(Long userId, UpdateUserStatusRequest request);
 }
