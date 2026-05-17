@@ -1,19 +1,25 @@
 package com.eventhub.modules.system.controller;
 
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.eventhub.common.constant.RequestContextConstants;
 import com.eventhub.infra.logging.RequestIdFilter;
 import org.junit.jupiter.api.Test;
+import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 
 /**
  * {@link SystemController} 的 Web 层测试。
@@ -65,17 +71,37 @@ class SystemControllerTest {
      */
     @Test
     void pingShouldReturnWrappedSuccessResponse() throws Exception {
-        mockMvc.perform(get("/api/v1/system/ping"))
+        MvcResult result = mockMvc.perform(get("/api/v1/system/ping"))
                 // Controller 正常执行时，HTTP 层应返回 200 OK。
                 .andExpect(status().isOk())
                 // 请求经过 RequestIdFilter 后，响应头中必须存在 X-Request-Id。
-                .andExpect(header().exists("X-Request-Id"))
+                .andExpect(header().exists(RequestContextConstants.REQUEST_ID_HEADER))
                 // code 是项目自定义的应用层状态码，不等同于 HTTP 状态码。
                 .andExpect(jsonPath("$.code").value("COMMON-000"))
                 // message 表示统一响应体中的默认成功消息。
                 .andExpect(jsonPath("$.message").value("成功"))
                 // data 则承载真正的业务结果，这里验证服务名是否被正确返回。
-                .andExpect(jsonPath("$.data.serviceName").value("eventhub-backend"));
+                .andExpect(jsonPath("$.data.serviceName").value("eventhub-backend"))
+                .andReturn();
+
+        assertResponseRequestIdConsistent(result);
+        assertNull(MDC.get(RequestContextConstants.REQUEST_ID_MDC_KEY));
+    }
+
+    /**
+     * 验证调用方传入合法请求 ID 时，系统会复用该值并同步写入响应头和统一响应体。
+     */
+    @Test
+    void pingShouldReuseIncomingRequestIdInHeaderAndBody() throws Exception {
+        String requestId = "client-req-001";
+
+        mockMvc.perform(get("/api/v1/system/ping")
+                        .header(RequestContextConstants.REQUEST_ID_HEADER, requestId))
+                .andExpect(status().isOk())
+                .andExpect(header().string(RequestContextConstants.REQUEST_ID_HEADER, requestId))
+                .andExpect(jsonPath("$.requestId").value(requestId));
+
+        assertNull(MDC.get(RequestContextConstants.REQUEST_ID_MDC_KEY));
     }
 
     /**
@@ -171,13 +197,19 @@ class SystemControllerTest {
      */
     @Test
     void pingShouldRegenerateUnsafeRequestId() throws Exception {
-        mockMvc.perform(get("/api/v1/system/ping")
+        MvcResult result = mockMvc.perform(get("/api/v1/system/ping")
                         // 这里故意传入包含空格和非法字符的请求 ID。
-                        .header(RequestIdFilter.HEADER_NAME, "unsafe request id ###"))
+                        .header(RequestContextConstants.REQUEST_ID_HEADER, "unsafe request id ###"))
                 .andExpect(status().isOk())
-                .andExpect(header().exists(RequestIdFilter.HEADER_NAME))
+                .andExpect(header().exists(RequestContextConstants.REQUEST_ID_HEADER))
                 // 断言响应头存在且不是原始非法值，表示过滤器做了重新生成。
-                .andExpect(header().string(RequestIdFilter.HEADER_NAME, org.hamcrest.Matchers.not("unsafe request id ###")));
+                .andExpect(header().string(
+                        RequestContextConstants.REQUEST_ID_HEADER,
+                        org.hamcrest.Matchers.not("unsafe request id ###")
+                ))
+                .andReturn();
+
+        assertResponseRequestIdConsistent(result);
     }
 
     /**
@@ -190,7 +222,9 @@ class SystemControllerTest {
     void healthEndpointShouldBeAvailable() throws Exception {
         mockMvc.perform(get("/actuator/health"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("UP"));
+                .andExpect(jsonPath("$.status").value("UP"))
+                // Actuator 返回的不是 ApiResponse，ResponseBodyAdvice 不应额外注入 requestId 字段。
+                .andExpect(jsonPath("$.requestId").doesNotExist());
     }
 
     /**
@@ -231,9 +265,27 @@ class SystemControllerTest {
      */
     @Test
     void missingFaviconShouldReturnUnifiedNotFoundResponse() throws Exception {
-        mockMvc.perform(get("/favicon.ico"))
+        MvcResult result = mockMvc.perform(get("/favicon.ico"))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("COMMON-404"))
-                .andExpect(jsonPath("$.message").value("请求的资源不存在"));
+                .andExpect(jsonPath("$.message").value("请求的资源不存在"))
+                .andReturn();
+
+        assertResponseRequestIdConsistent(result);
+    }
+
+    /**
+     * 校验响应头中的 requestId 与统一响应体中的 requestId 是否保持一致。
+     * <p>
+     * 这里直接读取原始响应 JSON，是为了避免在每个 MockMvc 用例里重复解析和断言。
+     * requestId 经过过滤器格式校验，只允许安全字符，因此可稳定用于字符串包含判断。
+     * </p>
+     *
+     * @param result MockMvc 执行结果
+     */
+    private void assertResponseRequestIdConsistent(MvcResult result) throws Exception {
+        String requestId = result.getResponse().getHeader(RequestContextConstants.REQUEST_ID_HEADER);
+        assertNotNull(requestId);
+        assertTrue(result.getResponse().getContentAsString().contains("\"requestId\":\"" + requestId + "\""));
     }
 }

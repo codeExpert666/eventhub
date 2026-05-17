@@ -1,28 +1,53 @@
 package com.eventhub.common.api;
 
-import com.eventhub.infra.logging.RequestIdFilter;
 import java.time.OffsetDateTime;
-import org.slf4j.MDC;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
 
 /**
  * 统一响应体。
- * 业务接口统一使用该结构返回，便于前端接入、日志追踪和后续统一错误码治理。
- * 该记录类型同时承载协议层成功/失败结果、业务数据以及请求追踪信息，
+ * 业务接口统一使用该结构返回，便于前端接入和后续统一错误码治理。
+ * 该类型同时承载协议层成功/失败结果、业务数据以及请求追踪信息，
  * 让控制器和全局异常处理器都可以通过同一套结构对外响应。
  *
- * @param code 应用层响应码。成功时通常为 {@code COMMON-000}，失败时对应具体错误码。
- * @param message 面向调用方的响应描述。成功时通常为默认成功文案，失败时为校验或业务错误提示。
- * @param data 业务数据载荷。查询类接口通常返回具体数据，纯操作型接口可为 {@code null}。
- * @param requestId 当前请求的唯一追踪标识，通常由 {@link RequestIdFilter} 注入到 MDC 和响应头中。
- * @param timestamp 当前响应生成时间，用于帮助调用方和日志系统对齐时序。
+ * <p>该类型只负责表达响应数据结构，不主动读取 MDC、Servlet request 或 Spring Web 上下文。
+ * HTTP 响应中的 requestId 由 Web 出口层统一补充，避免非 HTTP 场景隐式依赖线程上下文。</p>
+ *
+ * <p>响应的业务语义字段在工厂方法构造后保持不变，requestId 则允许由 HTTP 出口层后置填充。
+ * 因此这里使用普通 class，而不是 record。</p>
+ *
+ * <p>{@link Getter} 会为字段生成标准 JavaBean getter，供测试断言与 Jackson 序列化使用；
+ * {@link AllArgsConstructor} 只生成私有全参构造器，避免外部绕过静态工厂方法创建响应对象。</p>
  */
-public record ApiResponse<T>(
-        String code,
-        String message,
-        T data,
-        String requestId,
-        OffsetDateTime timestamp
-) {
+@Getter
+@AllArgsConstructor(access = AccessLevel.PRIVATE)
+public class ApiResponse<T> {
+
+    /**
+     * 应用层响应码。成功时通常为 {@code COMMON-000}，失败时对应具体错误码。
+     */
+    private final String code;
+
+    /**
+     * 面向调用方的响应描述。成功时通常为默认成功文案，失败时为校验或业务错误提示。
+     */
+    private final String message;
+
+    /**
+     * 业务数据载荷。查询类接口通常返回具体数据，纯操作型接口可为 {@code null}。
+     */
+    private final T data;
+
+    /**
+     * 当前 HTTP 请求的唯一追踪标识；构造阶段可为空，由 HTTP 出口层统一填充。
+     */
+    private String requestId;
+
+    /**
+     * 当前响应生成时间，用于帮助调用方和日志系统对齐时序。
+     */
+    private final OffsetDateTime timestamp;
 
     /**
      * 构造一个不携带业务数据的成功响应。
@@ -46,7 +71,7 @@ public record ApiResponse<T>(
                 ErrorCode.SUCCESS.getCode(),
                 ErrorCode.SUCCESS.getDefaultMessage(),
                 data,
-                currentRequestId(),
+                null,
                 OffsetDateTime.now()
         );
     }
@@ -67,19 +92,23 @@ public record ApiResponse<T>(
                 errorCode.getCode(),
                 message,
                 data,
-                currentRequestId(),
+                null,
                 OffsetDateTime.now()
         );
     }
 
     /**
-     * 从 MDC 中读取当前请求的 requestId。
-     * 请求进入系统时，{@link RequestIdFilter} 会优先复用合法的请求头，
-     * 否则生成新的 requestId 并写入 MDC，因此这里可以在响应构造阶段复用同一追踪标识。
+     * 为当前响应对象补充 requestId。
+     * <p>
+     * requestId 来自 HTTP 请求 attribute，由 Web 出口层在响应写出前统一设置。
+     * 返回 {@code this} 是为了方便 Advice 直接返回当前响应对象，不再创建额外副本。
+     * </p>
      *
-     * @return 当前线程绑定的 requestId；如果当前调用不在 HTTP 请求上下文中，可能返回 {@code null}
+     * @param requestId 当前 HTTP 请求的追踪标识
+     * @return 当前响应对象
      */
-    private static String currentRequestId() {
-        return MDC.get(RequestIdFilter.MDC_KEY);
+    public ApiResponse<T> withRequestId(String requestId) {
+        this.requestId = requestId;
+        return this;
     }
 }

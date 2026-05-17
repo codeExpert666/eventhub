@@ -3,11 +3,9 @@ package com.eventhub.common.api;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 
-import com.eventhub.infra.logging.RequestIdFilter;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
-import org.slf4j.MDC;
 
 /**
  * ApiResponse 工厂方法测试。
@@ -19,23 +17,11 @@ import org.slf4j.MDC;
  * <p>
  * 当前重点验证无参 {@link ApiResponse#success()} 工厂方法的语义：
  * 当业务操作成功但没有返回数据时，响应仍然必须使用成功错误码、成功文案、
- * 空业务数据、当前请求追踪标识以及生成时间，避免后续重构时破坏统一成功响应约定。
+ * 空业务数据、空 requestId 以及生成时间，避免后续重构时破坏统一成功响应约定。
+ * requestId 的 HTTP 注入由 Web 出口层覆盖，不属于该纯模型测试的职责。
  * </p>
  */
 class ApiResponseTest {
-
-    /**
-     * 每个测试用例结束后清理 MDC 中的 requestId。
-     * <p>
-     * MDC 本质上依赖线程上下文保存日志追踪信息，测试运行器可能复用同一个线程执行多个用例。
-     * 如果不主动清理，前一个测试写入的 requestId 可能泄漏到后一个测试，
-     * 导致测试结果受执行顺序影响，也会掩盖生产代码中 requestId 读取逻辑的问题。
-     * </p>
-     */
-    @AfterEach
-    void clearMdc() {
-        MDC.remove(RequestIdFilter.MDC_KEY);
-    }
 
     /**
      * 验证无参 {@link ApiResponse#success()} 会返回一个“不携带业务数据”的成功响应。
@@ -47,22 +33,38 @@ class ApiResponseTest {
      */
     @Test
     void successWithoutDataShouldReturnVoidSuccessResponse() {
-        // 模拟 RequestIdFilter 在真实 HTTP 请求进入系统时写入的 requestId。
-        // ApiResponse 不直接依赖 HttpServletRequest，而是从 MDC 读取当前线程绑定的追踪标识。
-        MDC.put(RequestIdFilter.MDC_KEY, "req-success-no-data");
-
         // 调用无参 success 工厂方法，表达“操作成功，但没有业务数据需要返回”。
         ApiResponse<Void> response = ApiResponse.success();
 
         // 成功响应必须使用 ErrorCode.SUCCESS 中定义的应用层响应码，而不是随意硬编码字符串。
-        assertEquals(ErrorCode.SUCCESS.getCode(), response.code());
+        assertEquals(ErrorCode.SUCCESS.getCode(), response.getCode());
         // 成功文案也应来自 ErrorCode.SUCCESS，保证统一响应口径集中维护。
-        assertEquals(ErrorCode.SUCCESS.getDefaultMessage(), response.message());
+        assertEquals(ErrorCode.SUCCESS.getDefaultMessage(), response.getMessage());
         // 无参 success 的核心语义：响应成功，但 data 为空，类型上通过 Void 明确“不返回业务载荷”。
-        assertNull(response.data());
-        // requestId 应从 MDC 透传到响应体，保证响应 JSON、响应头和日志可以被同一个追踪标识串起来。
-        assertEquals("req-success-no-data", response.requestId());
+        assertNull(response.getData());
+        // ApiResponse 是纯响应模型，构造阶段不隐式读取 MDC 或其他线程上下文。
+        assertNull(response.getRequestId());
         // timestamp 由工厂方法在构造响应时即时生成，这里只关心它存在，不绑定具体时间以避免脆弱测试。
-        assertNotNull(response.timestamp());
+        assertNotNull(response.getTimestamp());
+    }
+
+    /**
+     * 验证 requestId 补充方法会在当前响应对象上设置 requestId，并保留原响应语义。
+     * <p>
+     * HTTP 出口层补充 requestId 时，只应替换 requestId 字段，不改变 code、message、data 和 timestamp。
+     * </p>
+     */
+    @Test
+    void withRequestIdShouldSetRequestIdOnCurrentResponse() {
+        ApiResponse<String> response = ApiResponse.success("pong");
+
+        ApiResponse<String> responseWithRequestId = response.withRequestId("req-api-response");
+
+        assertSame(response, responseWithRequestId);
+        assertEquals(ErrorCode.SUCCESS.getCode(), responseWithRequestId.getCode());
+        assertEquals(ErrorCode.SUCCESS.getDefaultMessage(), responseWithRequestId.getMessage());
+        assertEquals("pong", responseWithRequestId.getData());
+        assertEquals("req-api-response", responseWithRequestId.getRequestId());
+        assertEquals(response.getTimestamp(), responseWithRequestId.getTimestamp());
     }
 }

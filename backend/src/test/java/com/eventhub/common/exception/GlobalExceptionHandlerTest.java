@@ -20,10 +20,9 @@ import org.springframework.web.servlet.resource.NoResourceFoundException;
  * 绑定到完整 Web 上下文、数据库迁移或 OpenAPI 初始化流程上。
  * </p>
  * <p>
- * 考虑到本测试类不启动 Spring 容器，不走 Filter 链，
- * RequestIdFilter 便不会执行，MDC 里通常没有 requestId。
- * 因此测试过程中不会对 requestId 进行验证，
- * requestId 的正确性应由集成测试覆盖
+ * 考虑到本测试类不启动 Spring 容器，不走 Filter 链和 ResponseBodyAdvice，
+ * 异常处理器只需要构造业务错误响应，不负责填充 requestId。
+ * requestId 的正确性应由 Web 集成测试覆盖。
  * </p>
  */
 class GlobalExceptionHandlerTest {
@@ -47,10 +46,11 @@ class GlobalExceptionHandlerTest {
 
         assertEquals(HttpStatus.NOT_FOUND, responseEntity.getStatusCode());
         assertNotNull(body);
-        assertEquals(ErrorCode.NOT_FOUND.getCode(), body.code());
-        assertEquals("请求的资源不存在", body.message());
-        assertNull(body.data());
-        assertNotNull(body.timestamp());
+        assertEquals(ErrorCode.NOT_FOUND.getCode(), body.getCode());
+        assertEquals("请求的资源不存在", body.getMessage());
+        assertNull(body.getData());
+        assertNull(body.getRequestId());
+        assertNotNull(body.getTimestamp());
     }
 
     /**
@@ -70,9 +70,10 @@ class GlobalExceptionHandlerTest {
 
         assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, responseEntity.getStatusCode());
         assertNotNull(body);
-        assertEquals(ErrorCode.INTERNAL_ERROR.getCode(), body.code());
-        assertEquals(ErrorCode.INTERNAL_ERROR.getDefaultMessage(), body.message());
-        assertNull(body.data());
-        assertNotNull(body.timestamp());
+        assertEquals(ErrorCode.INTERNAL_ERROR.getCode(), body.getCode());
+        assertEquals(ErrorCode.INTERNAL_ERROR.getDefaultMessage(), body.getMessage());
+        assertNull(body.getData());
+        assertNull(body.getRequestId());
+        assertNotNull(body.getTimestamp());
     }
 }
