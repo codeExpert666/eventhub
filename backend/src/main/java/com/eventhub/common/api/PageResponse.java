@@ -3,6 +3,8 @@ package com.eventhub.common.api;
 import java.util.List;
 import java.util.Objects;
 
+import lombok.Getter;
+
 /**
  * 通用分页响应值对象。
  *
@@ -10,26 +12,36 @@ import java.util.Objects;
  * 该结构只表达分页协议本身，不关心具体业务数据类型。活动、场次、订单和用户列表都可以复用它，
  * 从而让前端在消费分页接口时获得稳定的响应字段。
  * </p>
- *
- * @param items       当前页数据
- * @param page        当前页码，和请求保持一致，仍为 1-based
- * @param size        每页条数
- * @param total       满足查询条件的总记录数
- * @param totalPages  总页数
- * @param hasNext     是否存在下一页
- * @param hasPrevious 是否存在上一页
- * @param <T>         当前页数据类型
  */
-public record PageResponse<T>(
-        List<T> items,
-        int page,
-        int size,
-        long total,
-        long totalPages,
-        boolean hasNext,
-        boolean hasPrevious) {
+@Getter
+public final class PageResponse<T> {
 
-    public PageResponse {
+    private final List<T> items;
+    private final int page;
+    private final int size;
+    private final long total;
+    private final long totalPages;
+    private final boolean hasNext;
+    private final boolean hasPrevious;
+
+    /**
+     * 私有构造器用于收口分页响应的创建入口。
+     *
+     * <p>
+     * {@code totalPages}、{@code hasNext} 和 {@code hasPrevious} 都是由分页请求与总数推导出来的元数据。
+     * 如果公开全参构造器，调用方就可能绕过统一计算规则，构造出“总页数为 3 但没有下一页”等不一致响应。
+     * 因此外部代码只能通过 {@link #of(List, PageRequest, long)} 创建分页响应。
+     * </p>
+     */
+    private PageResponse(
+            List<T> items,
+            int page,
+            int size,
+            long total,
+            long totalPages,
+            boolean hasNext,
+            boolean hasPrevious
+    ) {
         Objects.requireNonNull(items, "items must not be null");
         if (page < 1) {
             throw new IllegalArgumentException("page must be greater than or equal to 1");
@@ -43,7 +55,13 @@ public record PageResponse<T>(
         if (totalPages < 0) {
             throw new IllegalArgumentException("totalPages must be greater than or equal to 0");
         }
-        items = List.copyOf(items);
+        this.items = List.copyOf(items);
+        this.page = page;
+        this.size = size;
+        this.total = total;
+        this.totalPages = totalPages;
+        this.hasNext = hasNext;
+        this.hasPrevious = hasPrevious;
     }
 
     /**

@@ -1,6 +1,7 @@
 package com.eventhub.infra.security.principal;
 
 import java.util.List;
+import java.util.Objects;
 
 /**
  * 当前登录用户在 Spring Security 上下文中的最小身份模型。
@@ -21,14 +22,17 @@ public record AuthenticatedPrincipal(
         List<String> authorities) {
 
     /**
-     * record 紧凑构造器。
+     * 构造当前认证主体。
      *
      * <p>
+     * 当前阶段该对象只承担最小身份快照职责，使用 record 可以直接表达不可变数据载体语义。
      * authorities 会被复制成不可变列表，防止调用方在 principal 创建后继续修改原始集合，
      * 导致同一次请求中的授权判断出现不可预期变化。
      * </p>
      */
     public AuthenticatedPrincipal {
+        Objects.requireNonNull(userId, "userId must not be null");
+        Objects.requireNonNull(username, "username must not be null");
         authorities = authorities == null ? List.of() : List.copyOf(authorities);
     }
 }

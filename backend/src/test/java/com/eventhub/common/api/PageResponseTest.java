@@ -29,13 +29,13 @@ class PageResponseTest {
                 5
         );
 
-        assertEquals(List.of("u3", "u4"), response.items());
-        assertEquals(2, response.page());
-        assertEquals(2, response.size());
-        assertEquals(5, response.total());
-        assertEquals(3, response.totalPages());
-        assertTrue(response.hasNext());
-        assertTrue(response.hasPrevious());
+        assertEquals(List.of("u3", "u4"), response.getItems());
+        assertEquals(2, response.getPage());
+        assertEquals(2, response.getSize());
+        assertEquals(5, response.getTotal());
+        assertEquals(3, response.getTotalPages());
+        assertTrue(response.isHasNext());
+        assertTrue(response.isHasPrevious());
     }
 
     /**
@@ -45,10 +45,10 @@ class PageResponseTest {
     void emptyTotalShouldReturnZeroTotalPages() {
         PageResponse<String> response = PageResponse.of(List.of(), PageRequest.of(1, 20), 0);
 
-        assertEquals(0, response.total());
-        assertEquals(0, response.totalPages());
-        assertFalse(response.hasNext());
-        assertFalse(response.hasPrevious());
+        assertEquals(0, response.getTotal());
+        assertEquals(0, response.getTotalPages());
+        assertFalse(response.isHasNext());
+        assertFalse(response.isHasPrevious());
     }
 
     /**
@@ -58,9 +58,9 @@ class PageResponseTest {
     void emptyTotalShouldNotHavePreviousPage() {
         PageResponse<String> response = PageResponse.of(List.of(), PageRequest.of(2, 20), 0);
 
-        assertEquals(0, response.totalPages());
-        assertFalse(response.hasNext());
-        assertFalse(response.hasPrevious());
+        assertEquals(0, response.getTotalPages());
+        assertFalse(response.isHasNext());
+        assertFalse(response.isHasPrevious());
     }
 
     /**
@@ -70,6 +70,6 @@ class PageResponseTest {
     void itemsShouldBeImmutableCopy() {
         PageResponse<String> response = PageResponse.of(List.of("admin"), PageRequest.of(1, 20), 1);
 
-        assertThrows(UnsupportedOperationException.class, () -> response.items().add("user"));
+        assertThrows(UnsupportedOperationException.class, () -> response.getItems().add("user"));
     }
 }
