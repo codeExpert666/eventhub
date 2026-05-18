@@ -30,6 +30,32 @@
         id, username, email, password_hash, status, created_at, updated_at
     </sql>
 
+    <sql id="UserCriteriaWhere">
+        <where>
+            <if test="criteria.username != null">
+                AND username LIKE CONCAT('%', #{criteria.username}, '%')
+            </if>
+            <if test="criteria.email != null">
+                AND email LIKE CONCAT('%', #{criteria.email}, '%')
+            </if>
+            <if test="criteria.status != null">
+                AND status = #{criteria.status}
+            </if>
+            <if test="criteria.createdAtFrom != null">
+                AND created_at <![CDATA[>=]]> #{criteria.createdAtFrom}
+            </if>
+            <if test="criteria.createdAtTo != null">
+                AND created_at <![CDATA[<=]]> #{criteria.createdAtTo}
+            </if>
+            <if test="criteria.updatedAtFrom != null">
+                AND updated_at <![CDATA[>=]]> #{criteria.updatedAtFrom}
+            </if>
+            <if test="criteria.updatedAtTo != null">
+                AND updated_at <![CDATA[<=]]> #{criteria.updatedAtTo}
+            </if>
+        </where>
+    </sql>
+
     <select id="existsByUsername" resultType="boolean">
         SELECT CASE WHEN COUNT(*) > 0 THEN TRUE ELSE FALSE END
         FROM users
@@ -75,11 +101,20 @@
         WHERE id = #{userId}
     </select>
 
-    <select id="findAll" resultMap="UserEntityResultMap">
+    <select id="countByCriteria" resultType="long">
+        SELECT COUNT(*)
+        FROM users
+        <include refid="UserCriteriaWhere"/>
+    </select>
+
+    <select id="findPage" resultMap="UserEntityResultMap">
         SELECT
         <include refid="UserColumns"/>
         FROM users
-        ORDER BY id ASC
+        <include refid="UserCriteriaWhere"/>
+        ORDER BY created_at DESC, id DESC
+        LIMIT #{limit}
+        OFFSET #{offset}
     </select>
 
     <update id="updateStatus">

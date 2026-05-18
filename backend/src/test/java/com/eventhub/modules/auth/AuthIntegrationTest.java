@@ -2,6 +2,7 @@ package com.eventhub.modules.auth;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.greaterThan;
+import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
@@ -10,6 +11,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.time.Duration;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
@@ -335,11 +338,121 @@ class AuthIntegrationTest {
         String adminToken = loginAndExtractToken("admin", "Admin123456");
 
         mockMvc.perform(get("/api/v1/admin/users")
+                .param("username", "admin")
                 .header(HttpHeaders.AUTHORIZATION, bearer(adminToken)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data[0].username").value("admin"))
-                .andExpect(jsonPath("$.data[0].roles[0]").value("ADMIN"))
-                .andExpect(jsonPath("$.data[0].roles[1]").value("USER"));
+                .andExpect(jsonPath("$.data.page").value(1))
+                .andExpect(jsonPath("$.data.size").value(20))
+                .andExpect(jsonPath("$.data.total", greaterThan(0)))
+                .andExpect(jsonPath("$.data.totalPages", greaterThan(0)))
+                .andExpect(jsonPath("$.data.items[0].username").value("admin"))
+                .andExpect(jsonPath("$.data.items[0].roles[0]").value("ADMIN"))
+                .andExpect(jsonPath("$.data.items[0].roles[1]").value("USER"));
+    }
+
+    /**
+     * 验证管理员用户列表支持 page/size 分页参数，并默认优先返回新注册用户。
+     */
+    @Test
+    void adminUsersShouldSupportPaginationParameters() throws Exception {
+        String username = nextUsername("page");
+        register(username, nextEmail(username));
+        String adminToken = loginAndExtractToken("admin", "Admin123456");
+
+        mockMvc.perform(get("/api/v1/admin/users")
+                .param("page", "1")
+                .param("size", "1")
+                .header(HttpHeaders.AUTHORIZATION, bearer(adminToken)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.page").value(1))
+                .andExpect(jsonPath("$.data.size").value(1))
+                .andExpect(jsonPath("$.data.total", greaterThan(1)))
+                .andExpect(jsonPath("$.data.totalPages", greaterThan(1)))
+                .andExpect(jsonPath("$.data.hasNext").value(true))
+                .andExpect(jsonPath("$.data.hasPrevious").value(false))
+                .andExpect(jsonPath("$.data.items", hasSize(1)))
+                .andExpect(jsonPath("$.data.items[0].username").value(username));
+    }
+
+    /**
+     * 验证管理员用户列表支持按用户名、邮箱和状态组合筛选。
+     */
+    @Test
+    void adminUsersShouldFilterByUsernameEmailAndStatus() throws Exception {
+        String username = nextUsername("filter");
+        String email = nextEmail(username);
+        register(username, email);
+        String adminToken = loginAndExtractToken("admin", "Admin123456");
+
+        mockMvc.perform(get("/api/v1/admin/users")
+                .param("username", username)
+                .param("email", email)
+                .param("status", "ENABLED")
+                .header(HttpHeaders.AUTHORIZATION, bearer(adminToken)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.total").value(1))
+                .andExpect(jsonPath("$.data.items", hasSize(1)))
+                .andExpect(jsonPath("$.data.items[0].username").value(username))
+                .andExpect(jsonPath("$.data.items[0].email").value(email))
+                .andExpect(jsonPath("$.data.items[0].status").value("ENABLED"))
+                .andExpect(jsonPath("$.data.items[0].roles[0]").value("USER"));
+    }
+
+    /**
+     * 验证管理员用户列表支持按 createdAt 和 updatedAt 时间范围筛选。
+     */
+    @Test
+    void adminUsersShouldFilterByCreatedAtAndUpdatedAtRange() throws Exception {
+        LocalDateTime from = LocalDateTime.now().minusMinutes(1);
+        String username = nextUsername("timerange");
+        register(username, nextEmail(username));
+        LocalDateTime to = LocalDateTime.now().plusMinutes(1);
+        String adminToken = loginAndExtractToken("admin", "Admin123456");
+
+        mockMvc.perform(get("/api/v1/admin/users")
+                .param("username", username)
+                .param("createdAtFrom", formatDateTime(from))
+                .param("createdAtTo", formatDateTime(to))
+                .param("updatedAtFrom", formatDateTime(from))
+                .param("updatedAtTo", formatDateTime(to))
+                .header(HttpHeaders.AUTHORIZATION, bearer(adminToken)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.total").value(1))
+                .andExpect(jsonPath("$.data.items", hasSize(1)))
+                .andExpect(jsonPath("$.data.items[0].username").value(username));
+    }
+
+    /**
+     * 验证非法分页参数会在 Controller 边界被拦截为统一 400 响应。
+     */
+    @Test
+    void adminUsersShouldRejectInvalidPaginationParameters() throws Exception {
+        String adminToken = loginAndExtractToken("admin", "Admin123456");
+
+        mockMvc.perform(get("/api/v1/admin/users")
+                .param("page", "0")
+                .header(HttpHeaders.AUTHORIZATION, bearer(adminToken)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("COMMON-400"));
+
+        mockMvc.perform(get("/api/v1/admin/users")
+                .param("size", "101")
+                .header(HttpHeaders.AUTHORIZATION, bearer(adminToken)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("COMMON-400"));
+
+        mockMvc.perform(get("/api/v1/admin/users")
+                .param("status", "LOCKED")
+                .header(HttpHeaders.AUTHORIZATION, bearer(adminToken)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("COMMON-400"));
+
+        mockMvc.perform(get("/api/v1/admin/users")
+                .param("createdAtFrom", "2026-05-18T10:00:00")
+                .param("createdAtTo", "2026-05-17T10:00:00")
+                .header(HttpHeaders.AUTHORIZATION, bearer(adminToken)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("COMMON-400"));
     }
 
     private JsonNode register(String username, String email) throws Exception {
@@ -391,6 +504,10 @@ class AuthIntegrationTest {
     private String tamperToken(String token) {
         String replacement = token.endsWith("a") ? "b" : "a";
         return token.substring(0, token.length() - 1) + replacement;
+    }
+
+    private String formatDateTime(LocalDateTime dateTime) {
+        return dateTime.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
     }
 
     private String nextUsername(String prefix) {

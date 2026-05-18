@@ -1,8 +1,8 @@
 package com.eventhub.modules.auth.service;
 
-import java.util.List;
-
+import com.eventhub.common.api.PageResponse;
 import com.eventhub.infra.security.principal.AuthenticatedPrincipal;
+import com.eventhub.modules.auth.dto.request.AdminUserQueryRequest;
 import com.eventhub.modules.auth.dto.request.LoginRequest;
 import com.eventhub.modules.auth.dto.request.RegisterRequest;
 import com.eventhub.modules.auth.dto.request.UpdateUserStatusRequest;
@@ -51,11 +51,12 @@ public interface AuthService {
     UserInfo currentUser(AuthenticatedPrincipal principal);
 
     /**
-     * 查询全部用户。
+     * 分页查询用户。
      *
-     * @return 用户摘要列表
+     * @param request 分页与筛选查询参数
+     * @return 用户摘要分页结果
      */
-    List<UserInfo> listUsers();
+    PageResponse<UserInfo> listUsers(AdminUserQueryRequest request);
 
     /**
      * 管理员更新用户状态。

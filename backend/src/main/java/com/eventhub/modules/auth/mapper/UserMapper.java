@@ -8,6 +8,7 @@ import org.apache.ibatis.annotations.Param;
 
 import com.eventhub.modules.auth.entity.UserEntity;
 import com.eventhub.modules.auth.enums.UserStatus;
+import com.eventhub.modules.auth.mapper.param.UserQueryCriteria;
 
 /**
  * users 表数据访问入口。
@@ -58,11 +59,25 @@ public interface UserMapper {
     Optional<UserEntity> findById(@Param("userId") Long userId);
 
     /**
-     * 查询全部用户摘要所需的基础数据。
+     * 按查询条件统计用户总数。
      *
-     * @return 用户记录列表
+     * @param criteria 查询条件
+     * @return 用户总数
      */
-    List<UserEntity> findAll();
+    long countByCriteria(@Param("criteria") UserQueryCriteria criteria);
+
+    /**
+     * 分页查询用户摘要所需的基础数据。
+     *
+     * @param criteria 查询条件
+     * @param limit  每页条数
+     * @param offset 起始偏移量
+     * @return 当前页用户记录列表
+     */
+    List<UserEntity> findPage(
+            @Param("criteria") UserQueryCriteria criteria,
+            @Param("limit") int limit,
+            @Param("offset") long offset);
 
     /**
      * 更新用户状态。

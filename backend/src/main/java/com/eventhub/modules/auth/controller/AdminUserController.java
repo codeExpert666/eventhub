@@ -1,9 +1,9 @@
 package com.eventhub.modules.auth.controller;
 
-import java.util.List;
-
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -11,6 +11,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.eventhub.common.api.ApiResponse;
+import com.eventhub.common.api.PageResponse;
+import com.eventhub.modules.auth.dto.request.AdminUserQueryRequest;
 import com.eventhub.modules.auth.dto.request.UpdateUserStatusRequest;
 import com.eventhub.modules.auth.service.AuthService;
 import com.eventhub.modules.auth.vo.UserInfo;
@@ -28,20 +30,22 @@ import lombok.RequiredArgsConstructor;
 @RestController
 @RequestMapping("/api/v1/admin/users")
 @RequiredArgsConstructor
+@Validated
 @PreAuthorize("hasRole('ADMIN')")
 public class AdminUserController {
 
     private final AuthService authService;
 
     /**
-     * 查询用户列表。
+     * 分页查询用户列表。
      *
-     * @return 用户摘要列表
+     * @param request 分页与筛选查询参数
+     * @return 用户摘要分页结果
      */
-    @Operation(summary = "查询用户列表", description = "管理员查看平台用户列表")
+    @Operation(summary = "分页查询用户列表", description = "管理员分页查看平台用户列表")
     @GetMapping
-    public ApiResponse<List<UserInfo>> listUsers() {
-        return ApiResponse.success(authService.listUsers());
+    public ApiResponse<PageResponse<UserInfo>> listUsers(@Valid @ModelAttribute AdminUserQueryRequest request) {
+        return ApiResponse.success(authService.listUsers(request));
     }
 
     /**

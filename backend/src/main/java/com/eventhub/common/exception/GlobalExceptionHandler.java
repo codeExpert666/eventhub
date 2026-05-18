@@ -6,6 +6,8 @@ import java.util.stream.Collectors;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.validation.BindException;
+import org.springframework.validation.BindingResult;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -42,18 +44,28 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiResponse<Map<String, String>>> handleMethodArgumentNotValid(
             MethodArgumentNotValidException exception) {
-        // 将字段级校验错误整理成 field -> message 的结构，方便前端按字段展示提示信息。
-        Map<String, String> fieldErrors = exception.getBindingResult()
-                .getFieldErrors()
-                .stream()
-                .collect(Collectors.toMap(
-                        FieldError::getField,
-                        FieldError::getDefaultMessage,
-                        (first, second) -> first,
-                        LinkedHashMap::new));
+        Map<String, String> fieldErrors = toFieldErrors(exception.getBindingResult());
         ApiResponse<Map<String, String>> response = ApiResponse.failure(
                 ErrorCode.VALIDATION_ERROR,
                 "请求体参数校验失败",
+                fieldErrors);
+        return ResponseEntity.status(ErrorCode.VALIDATION_ERROR.getHttpStatus()).body(response);
+    }
+
+    /**
+     * 处理 GET 查询参数或表单参数绑定失败。
+     * 常见场景包括分页参数无法转换为数字、日期时间格式不符合 ISO 约定，
+     * 以及 @ModelAttribute 查询对象上的 Bean Validation 校验失败。
+     *
+     * @param exception 参数绑定或校验失败异常
+     * @return 统一响应结构，data 中按字段名返回失败原因
+     */
+    @ExceptionHandler(BindException.class)
+    public ResponseEntity<ApiResponse<Map<String, String>>> handleBindException(BindException exception) {
+        Map<String, String> fieldErrors = toFieldErrors(exception.getBindingResult());
+        ApiResponse<Map<String, String>> response = ApiResponse.failure(
+                ErrorCode.VALIDATION_ERROR,
+                "请求参数绑定或校验失败",
                 fieldErrors);
         return ResponseEntity.status(ErrorCode.VALIDATION_ERROR.getHttpStatus()).body(response);
     }
@@ -153,5 +165,16 @@ public class GlobalExceptionHandler {
                 ErrorCode.INTERNAL_ERROR.getDefaultMessage(),
                 null);
         return ResponseEntity.status(ErrorCode.INTERNAL_ERROR.getHttpStatus()).body(response);
+    }
+
+    private Map<String, String> toFieldErrors(BindingResult bindingResult) {
+        // 将字段级校验错误整理成 field -> message 的结构，方便前端按字段展示提示信息。
+        return bindingResult.getFieldErrors()
+                .stream()
+                .collect(Collectors.toMap(
+                        FieldError::getField,
+                        FieldError::getDefaultMessage,
+                        (first, second) -> first,
+                        LinkedHashMap::new));
     }
 }

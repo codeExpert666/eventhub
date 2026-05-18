@@ -2,14 +2,19 @@ package com.eventhub.modules.auth.service.impl;
 
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.eventhub.common.api.PageRequest;
+import com.eventhub.common.api.PageResponse;
 import com.eventhub.infra.security.principal.AuthenticatedPrincipal;
+import com.eventhub.modules.auth.dto.request.AdminUserQueryRequest;
 import com.eventhub.modules.auth.dto.request.LoginRequest;
 import com.eventhub.modules.auth.dto.request.RegisterRequest;
 import com.eventhub.modules.auth.dto.request.UpdateUserStatusRequest;
@@ -19,6 +24,8 @@ import com.eventhub.modules.auth.enums.UserStatus;
 import com.eventhub.modules.auth.exception.AuthException;
 import com.eventhub.modules.auth.mapper.RoleMapper;
 import com.eventhub.modules.auth.mapper.UserMapper;
+import com.eventhub.modules.auth.mapper.param.UserQueryCriteria;
+import com.eventhub.modules.auth.mapper.result.UserRoleCodeResult;
 import com.eventhub.modules.auth.service.AuthService;
 import com.eventhub.modules.auth.service.TokenService;
 import com.eventhub.modules.auth.vo.LoginResponse;
@@ -164,17 +171,30 @@ public class AuthServiceImpl implements AuthService {
     }
 
     /**
-     * 查询全部用户。
-     * 当前仅供管理员接口验证 RBAC 闭环，后续可继续补分页、筛选和排序。
+     * 分页查询用户。
+     * 当前支持分页、账号字段筛选、状态筛选和时间范围筛选。
+     * 列表路径会按当前页用户 ID 批量查询角色，避免每个用户单独查一次角色造成 N+1 查询。
      *
-     * @return 用户摘要列表
+     * @param request 分页与筛选查询参数
+     * @return 用户摘要分页结果
      */
     @Override
-    public List<UserInfo> listUsers() {
-        return userMapper.findAll()
+    public PageResponse<UserInfo> listUsers(AdminUserQueryRequest request) {
+        Objects.requireNonNull(request, "request must not be null");
+        PageRequest pageRequest = request.toPageRequest();
+        UserQueryCriteria criteria = request.toCriteria();
+        long total = userMapper.countByCriteria(criteria);
+        if (total == 0) {
+            return PageResponse.of(List.of(), pageRequest, total);
+        }
+
+        List<UserEntity> userEntities = userMapper.findPage(criteria, pageRequest.size(), pageRequest.offset());
+        Map<Long, List<String>> rolesByUserId = findRolesByUserIds(userEntities);
+        List<UserInfo> users = userEntities
                 .stream()
-                .map(this::toUserInfo)
+                .map(user -> toUserInfo(user, rolesByUserId.getOrDefault(user.getId(), List.of())))
                 .toList();
+        return PageResponse.of(users, pageRequest, total);
     }
 
     /**
@@ -201,13 +221,32 @@ public class AuthServiceImpl implements AuthService {
     }
 
     private UserInfo toUserInfo(UserEntity user) {
+        return toUserInfo(user, roleMapper.findRoleCodesByUserId(user.getId()));
+    }
+
+    private UserInfo toUserInfo(UserEntity user, List<String> roles) {
         return new UserInfo(
                 user.getId(),
                 user.getUsername(),
                 user.getEmail(),
                 user.getStatus(),
-                roleMapper.findRoleCodesByUserId(user.getId())
+                roles
         );
+    }
+
+    private Map<Long, List<String>> findRolesByUserIds(List<UserEntity> users) {
+        if (users.isEmpty()) {
+            return Map.of();
+        }
+        List<Long> userIds = users.stream()
+                .map(UserEntity::getId)
+                .toList();
+        return roleMapper.findRoleCodesByUserIds(userIds)
+                .stream()
+                .collect(Collectors.groupingBy(
+                        UserRoleCodeResult::getUserId,
+                        Collectors.mapping(UserRoleCodeResult::getRoleCode, Collectors.toList())
+                ));
     }
 
     private String normalizeUsername(String username) {

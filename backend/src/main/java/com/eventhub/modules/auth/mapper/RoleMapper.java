@@ -7,6 +7,7 @@ import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
 import com.eventhub.modules.auth.entity.RoleEntity;
+import com.eventhub.modules.auth.mapper.result.UserRoleCodeResult;
 
 /**
  * roles 与 user_roles 表数据访问入口。
@@ -41,6 +42,16 @@ public interface RoleMapper {
      * @return 角色编码列表
      */
     List<String> findRoleCodesByUserId(@Param("userId") Long userId);
+
+    /**
+     * 批量查询多个用户拥有的角色编码。
+     * 管理员用户列表会一次返回一页用户，如果继续逐个用户查角色，会产生 N+1 查询；
+     * 该方法用当前页用户 ID 集合一次性查回角色，再由服务层按用户分组。
+     *
+     * @param userIds 用户主键集合
+     * @return 用户 ID 与角色编码的扁平结果列表
+     */
+    List<UserRoleCodeResult> findRoleCodesByUserIds(@Param("userIds") List<Long> userIds);
 
     /**
      * 为用户绑定角色。

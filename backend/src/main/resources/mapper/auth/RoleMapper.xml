@@ -16,6 +16,11 @@
         <result property="createdAt" column="created_at" javaType="java.time.LocalDateTime"/>
     </resultMap>
 
+    <resultMap id="UserRoleCodeResultMap" type="com.eventhub.modules.auth.mapper.result.UserRoleCodeResult">
+        <result property="userId" column="user_id" javaType="java.lang.Long"/>
+        <result property="roleCode" column="role_code" javaType="java.lang.String"/>
+    </resultMap>
+
     <sql id="RoleColumns">
         id, code, name, description, created_at
     </sql>
@@ -33,6 +38,18 @@
         JOIN user_roles ur ON ur.role_id = r.id
         WHERE ur.user_id = #{userId}
         ORDER BY r.code ASC
+    </select>
+
+    <select id="findRoleCodesByUserIds" resultMap="UserRoleCodeResultMap">
+        SELECT ur.user_id,
+               r.code AS role_code
+        FROM user_roles ur
+        JOIN roles r ON r.id = ur.role_id
+        WHERE ur.user_id IN
+        <foreach collection="userIds" item="userId" open="(" separator="," close=")">
+            #{userId}
+        </foreach>
+        ORDER BY ur.user_id ASC, r.code ASC
     </select>
 
     <insert id="addRoleToUser">
