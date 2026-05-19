@@ -55,6 +55,13 @@
 - 管理员查询参数使用 `AdminUserQueryRequest`：
   - GET 查询参数已经从 `page/size` 扩展到多个筛选字段，继续堆在 Controller 方法签名上会变得难读。
   - 查询对象可以集中维护默认值、校验规则和转换逻辑。
+- 不让 `AdminUserQueryRequest` 继承 `PageRequest`：
+  - `PageRequest` 当前是 Java `record`，天然不可继承，也更适合作为不可变分页值对象。
+  - `AdminUserQueryRequest` 是 Spring MVC 绑定用的可变 Web DTO，需要 setter、默认值、`@DateTimeFormat` 和 Bean Validation。
+  - 两者不是 is-a 关系；管理员用户查询请求只是包含分页参数，因此用 `toPageRequest()` 做组合转换更符合职责边界。
+- 保留 `UserQueryCriteria`：
+  - 它表达的是给 Mapper 使用的数据库查询条件，字段已经完成 trim、邮箱小写化和状态枚举转换。
+  - 避免 Mapper XML 直接依赖 HTTP DTO 的原始参数形态和 Web 层注解。
 - 继续手写 MyBatis SQL：
   - 当前项目已经使用 Mapper XML 管理 SQL。
   - `COUNT + WHERE + ORDER BY + LIMIT/OFFSET` 对当前需求足够清晰，不需要为了一个接口引入分页插件。
@@ -81,6 +88,12 @@
 - 方案 E：一次性新增排序参数
   - 优点是管理端可灵活切换排序。
   - 未采用原因是用户明确提出的排序诉求是“新注册用户优先”，动态排序还需要白名单、索引和前端交互约束。
+- 方案 F：让 `AdminUserQueryRequest` 继承 `PageRequest`
+  - 优点是可以少写一次 `request.toPageRequest()`，看起来更直接。
+  - 未采用原因是 `PageRequest` 作为 record 不能被继承；即使改成普通 class，Web 入参 DTO 继承通用分页值对象也会混淆 HTTP 绑定模型和内部分页规则。
+- 方案 G：删除 `UserQueryCriteria`，Mapper 直接使用 `AdminUserQueryRequest`
+  - 优点是参数对象更少。
+  - 未采用原因是 Mapper 会直接依赖 Web DTO，后续 SQL 层需要理解字符串状态、空字符串、邮箱归一化等 HTTP 入参细节，分层不够干净。
 
 ## 5. 测试与验证
 - 跑了哪些测试

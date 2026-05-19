@@ -49,6 +49,8 @@
 ## 5. 领域建模
 - `PageRequest`
   - 通用分页请求值对象。
+  - 只表达分页规则本身，不承接 HTTP 参数绑定、字段格式化或业务筛选条件。
+  - 当前实现为 Java `record`，天然不可继承；后续也应优先保持不可变值对象语义。
   - 字段：
     - `page`：从 1 开始的页码。
     - `size`：每页条数。
@@ -66,6 +68,10 @@
     - `hasPrevious`：是否存在上一页。
 - `AdminUserQueryRequest`
   - 管理员用户列表 GET 查询请求对象。
+  - 与 `PageRequest` 是组合关系，不是继承关系：
+    - `AdminUserQueryRequest` 属于 Web 入参 DTO，需要默认值、setter、`@DateTimeFormat` 和 Bean Validation。
+    - `PageRequest` 属于通用分页值对象，用于服务层内部表达已经校验后的分页规则。
+    - 管理员用户查询请求“包含分页参数”，但不应被建模为“分页请求的一种子类”。
   - 字段：
     - `page` / `size`：分页参数。
     - `username`：用户名包含匹配。
@@ -234,3 +240,13 @@ GET /api/v1/admin/users?updatedAtFrom=2026-05-01T00:00:00&updatedAtTo=2026-05-18
 - 备选方案 D：一次性支持动态排序字段。
   - 优点：管理端灵活性更高。
   - 未采用原因：动态排序需要白名单、索引和前端交互约束；当前最明确的业务需求是“新注册用户优先”，固定排序更稳。
+- 备选方案 E：让 `AdminUserQueryRequest` 继承 `PageRequest`，并在后续流程中统一使用 `AdminUserQueryRequest`。
+  - 优点：表面上减少一次 `toPageRequest()` 转换，调用链看起来更短。
+  - 未采用原因：
+    - `PageRequest` 当前是 Java `record`，不能被继承；如果为继承改成普通类，会削弱它作为不可变分页值对象的语义。
+    - `AdminUserQueryRequest` 是 Spring MVC 绑定用的可变 Web DTO，带有 setter、默认值、日期格式化和 HTTP 参数校验；`PageRequest` 是通用分页规则，二者生命周期和职责不同。
+    - 继承表达 is-a 关系，但管理员用户查询请求并不是“分页请求的一种”，而是“包含分页参数的用户查询请求”，组合比继承更准确。
+    - 如果 Mapper 直接接收 `AdminUserQueryRequest`，持久化层会依赖 Web DTO 中的字符串状态、格式化注解和原始输入形态，削弱 Controller / Service / Mapper 的分层边界。
+- 备选方案 F：移除 `UserQueryCriteria`，让 Mapper 直接使用 `AdminUserQueryRequest`。
+  - 优点：少一个参数对象。
+  - 未采用原因：`UserQueryCriteria` 承接的是已经 trim、normalize、枚举转换后的数据库查询条件；保留它可以避免 MyBatis XML 直接理解 HTTP 入参细节，也方便后续在服务层组合更多查询来源。
