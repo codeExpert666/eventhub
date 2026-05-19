@@ -87,6 +87,13 @@ public class AdminUserQueryRequest {
     /**
      * 校验创建时间范围，避免 from 晚于 to 时继续查询数据库。
      *
+     * <p>
+     * 该方法不会被业务代码显式调用，而是由 {@link AssertTrue} 配合 Controller 入参上的 {@code @Valid}
+     * 触发 Jakarta Bean Validation 时反射执行。方法返回 {@code false} 时，请求会在 Controller 边界被拦截为
+     * 参数校验错误。方法名使用 {@code isXxx} 是为了符合 JavaBean 布尔 getter 规范，保证校验框架能稳定识别为
+     * {@link AssertTrue} 属性校验。
+     * </p>
+     *
      * @return true 表示范围合法
      */
     @AssertTrue(message = "createdAtFrom 不能晚于 createdAtTo")
@@ -96,6 +103,13 @@ public class AdminUserQueryRequest {
 
     /**
      * 校验更新时间范围，避免 from 晚于 to 时继续查询数据库。
+     *
+     * <p>
+     * 该方法不会被业务代码显式调用，而是由 {@link AssertTrue} 配合 Controller 入参上的 {@code @Valid}
+     * 触发 Jakarta Bean Validation 时反射执行。方法返回 {@code false} 时，请求会在 Controller 边界被拦截为
+     * 参数校验错误。方法名使用 {@code isXxx} 是为了符合 JavaBean 布尔 getter 规范，保证校验框架能稳定识别为
+     * {@link AssertTrue} 属性校验。
+     * </p>
      *
      * @return true 表示范围合法
      */

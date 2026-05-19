@@ -25,6 +25,12 @@ import lombok.RequiredArgsConstructor;
 /**
  * 管理员用户管理接口。
  * 当前仅提供阶段 1 验证 RBAC 所需的最小能力，后续可继续补分页、搜索和审计日志。
+ *
+ * <p>
+ * 类级别的 {@link Validated} 用于启用 Spring 方法级参数校验。当前请求对象的字段校验主要由方法参数上的
+ * {@link Valid} 触发；这里保留 {@link Validated} 是为了后续在 {@code @PathVariable}、
+ * {@code @RequestParam} 等简单参数上直接声明校验约束（如 {@code @Positive}、{@code @Min}）时能够生效。
+ * </p>
  */
 @Tag(name = "Admin User", description = "管理员用户管理接口")
 @RestController

@@ -29,6 +29,20 @@ public record PageRequest(int page, int size) {
      */
     public static final int MAX_SIZE = 100;
 
+    /**
+     * 校验分页值对象自身的不变量。
+     *
+     * <p>
+     * 这里抛出 {@link IllegalArgumentException} 是内部防御性校验，用于防止绕过 Controller DTO 后构造出非法
+     * {@link PageRequest}。面向 HTTP 调用方的 page / size 参数错误，应优先由请求 DTO 上的 {@code @Min}、
+     * {@code @Max} 和 {@code @Valid} 在 Controller 边界拦截，并由全局异常处理转换为 {@code COMMON-400}。
+     * </p>
+     *
+     * <p>
+     * 如果未来新增接口直接把外部参数传入 {@link #of(int, int)}，应先补充 DTO 校验规则；不要依赖该构造方法的异常
+     * 作为接口参数校验结果，否则 {@link IllegalArgumentException} 可能落入未知异常兜底分支并返回系统内部错误。
+     * </p>
+     */
     public PageRequest {
         if (page < 1) {
             throw new IllegalArgumentException("page must be greater than or equal to 1");
