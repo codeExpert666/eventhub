@@ -180,6 +180,8 @@ public class AuthServiceImpl implements AuthService {
      */
     @Override
     public PageResponse<UserInfo> listUsers(AdminUserQueryRequest request) {
+        // Web 入口的 @ModelAttribute 正常会创建非 null 查询对象；这里仍显式校验，
+        // 是为了约束 service 层契约，避免绕过 Controller 直接传 null 时产生语义不清的 NPE。
         Objects.requireNonNull(request, "request must not be null");
         PageRequest pageRequest = request.toPageRequest();
         UserQueryCriteria criteria = request.toCriteria();

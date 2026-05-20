@@ -20,7 +20,21 @@ public class UserQueryCriteria {
 
     private final String username;
     private final String email;
+
+    /**
+     * 用户状态精确匹配条件。
+     * 在未配置自定义 TypeHandler 时，MyBatis 会使用默认枚举处理器绑定该字段：
+     * {@code UserStatus.ENABLED} 会作为字符串 {@code "ENABLED"} 传入 SQL，而不是传入 ordinal 数字。
+     * 因此 users.status 的存储值必须与 {@link UserStatus} 枚举常量名保持一致。
+     */
     private final UserStatus status;
+
+    /**
+     * 创建时间起点。
+     * 进入该 Mapper 参数对象前，Controller 请求中的 ISO 日期时间字符串已由 Spring 转成 {@link LocalDateTime}；
+     * 传入 MyBatis XML 的 {@code #{criteria.createdAtFrom}} 时，MyBatis 会使用内置 LocalDateTime TypeHandler
+     * 通过 JDBC 作为 TIMESTAMP 参数绑定。LocalDateTime 本身不包含时区信息，因此这里只表达本地日期时间。
+     */
     private final LocalDateTime createdAtFrom;
     private final LocalDateTime createdAtTo;
     private final LocalDateTime updatedAtFrom;
