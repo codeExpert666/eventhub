@@ -64,6 +64,18 @@ class PageResponseTest {
     }
 
     /**
+     * 验证请求页超过总页数时，不应把该无效页码当成“存在上一页”的有效当前位置。
+     */
+    @Test
+    void pageBeyondTotalPagesShouldNotHavePreviousPage() {
+        PageResponse<String> response = PageResponse.of(List.of(), PageRequest.of(4, 2), 5);
+
+        assertEquals(3, response.getTotalPages());
+        assertFalse(response.isHasNext());
+        assertFalse(response.isHasPrevious());
+    }
+
+    /**
      * 验证响应会复制 items，防止调用方在构造响应后继续修改列表内容。
      */
     @Test

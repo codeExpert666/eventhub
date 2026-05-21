@@ -55,6 +55,15 @@ public final class PageResponse<T> {
         if (totalPages < 0) {
             throw new IllegalArgumentException("totalPages must be greater than or equal to 0");
         }
+        /*
+         * 对 items 做防御性拷贝，避免调用方在 PageResponse 创建后继续修改原始 List，
+         * 导致响应对象的分页数据被外部间接改变。List.copyOf 返回的是不可变 List，
+         * 因此 getItems() 暴露出去后也不能再 add/remove/clear。
+         *
+         * 这里是浅拷贝：只复制 List 容器和元素引用，不复制每个 T 对象本身。
+         * 因此如果 T 是可变对象，元素内部状态仍然可能被外部引用修改；通常建议分页响应
+         * 承载不可变 DTO 或只读视图对象。
+         */
         this.items = List.copyOf(items);
         this.page = page;
         this.size = size;
@@ -70,6 +79,7 @@ public final class PageResponse<T> {
      * <p>
      * totalPages 使用向上取整；当 total 为 0 时返回 0，表示没有任何可展示页。
      * hasNext 不依赖当前页实际返回条数，而是根据页码和总页数判断，避免最后一页刚好满 size 时误判。
+     * hasPrevious 仅在当前请求页处于有效页码范围内时返回 true，避免超过总页数的请求被误认为存在上一页。
      * </p>
      *
      * @param items       当前页数据
@@ -80,22 +90,21 @@ public final class PageResponse<T> {
      */
     public static <T> PageResponse<T> of(List<T> items, PageRequest pageRequest, long total) {
         Objects.requireNonNull(pageRequest, "pageRequest must not be null");
-        long totalPages = calculateTotalPages(total, pageRequest.size());
+        int page = pageRequest.page();
+        int size = pageRequest.size();
+        long totalPages = calculateTotalPages(total, size);
         return new PageResponse<>(
                 items,
-                pageRequest.page(),
-                pageRequest.size(),
+                page,
+                size,
                 total,
                 totalPages,
-                pageRequest.page() < totalPages,
-                totalPages > 0 && pageRequest.page() > 1
+                page < totalPages,
+                totalPages > 0 && page > 1 && page <= totalPages
         );
     }
 
     private static long calculateTotalPages(long total, int size) {
-        if (total == 0) {
-            return 0;
-        }
         return (total + size - 1) / size;
     }
 }

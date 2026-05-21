@@ -187,6 +187,14 @@ public class AuthServiceImpl implements AuthService {
         UserQueryCriteria criteria = request.toCriteria();
         long total = userMapper.countByCriteria(criteria);
         if (total == 0) {
+            /*
+             * List.of() 的零参数版本返回一个不可变空列表，元素类型不是由空列表本身决定的，
+             * 而是由当前调用上下文推断出来的。这里 PageResponse.of 需要 List<UserInfo>，
+             * 因此编译器会把 List.of() 推断为 List<UserInfo>。
+             *
+             * 需要注意：Java 泛型存在类型擦除，UserInfo 这个泛型参数主要用于编译期类型检查；
+             * 运行时这个空 List 对象本身并不会保存“元素类型是 UserInfo”的信息。
+             */
             return PageResponse.of(List.of(), pageRequest, total);
         }
 
@@ -236,6 +244,23 @@ public class AuthServiceImpl implements AuthService {
         );
     }
 
+    /**
+     * 按用户 ID 批量查询用户角色编码，并按用户维度聚合。
+     *
+     * <p>
+     * 该方法主要服务于用户分页列表场景：分页查询已经拿到了当前页的用户集合，
+     * 再一次性查询这些用户的角色编码，避免在遍历用户时逐个调用角色查询接口造成 N+1 查询问题。
+     * </p>
+     *
+     * <p>
+     * 返回结果以用户 ID 作为 key，以该用户拥有的角色编码列表作为 value。
+     * 如果入参为空，直接返回不可变空 Map，避免发起无意义的数据库查询。
+     * 如果某个用户没有角色记录，则返回 Map 中不会包含该用户 ID，调用方需要自行提供默认空角色列表。
+     * </p>
+     *
+     * @param users 当前页用户实体列表
+     * @return 用户 ID 到角色编码列表的映射
+     */
     private Map<Long, List<String>> findRolesByUserIds(List<UserEntity> users) {
         if (users.isEmpty()) {
             return Map.of();
