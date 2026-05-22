@@ -221,6 +221,78 @@ class AuthIntegrationTest {
     }
 
     /**
+     * 验证请求体中的未知状态值会在 Jackson 枚举反序列化阶段被拒绝。
+     */
+    @Test
+    void updateUserStatusShouldRejectUnknownEnumValue() throws Exception {
+        long userId = registerAndReturnUserId("unknownstatus");
+        String adminToken = loginAndExtractToken("admin", "Admin123456");
+
+        mockMvc.perform(patch("/api/v1/admin/users/{userId}/status", userId)
+                .header(HttpHeaders.AUTHORIZATION, bearer(adminToken))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(toJson(Map.of("status", "LOCKED"))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("COMMON-400"))
+                .andExpect(jsonPath("$.message").value("请求体格式不合法"))
+                .andExpect(jsonPath("$.data.body").value("请求体缺失或 JSON 格式错误"));
+    }
+
+    /**
+     * 验证请求体中的 null 状态能完成绑定，但会被 Bean Validation 的 @NotNull 拦截。
+     */
+    @Test
+    void updateUserStatusShouldRejectNullStatus() throws Exception {
+        long userId = registerAndReturnUserId("nullstatus");
+        String adminToken = loginAndExtractToken("admin", "Admin123456");
+
+        mockMvc.perform(patch("/api/v1/admin/users/{userId}/status", userId)
+                .header(HttpHeaders.AUTHORIZATION, bearer(adminToken))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"status\":null}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("COMMON-400"))
+                .andExpect(jsonPath("$.message").value("请求体参数校验失败"))
+                .andExpect(jsonPath("$.data.status").value("status 不能为空"));
+    }
+
+    /**
+     * 验证请求体枚举字符串必须使用接口约定的大写枚举名，不接受大小写错误的输入。
+     */
+    @Test
+    void updateUserStatusShouldRejectLowercaseEnumValue() throws Exception {
+        long userId = registerAndReturnUserId("lowerstatus");
+        String adminToken = loginAndExtractToken("admin", "Admin123456");
+
+        mockMvc.perform(patch("/api/v1/admin/users/{userId}/status", userId)
+                .header(HttpHeaders.AUTHORIZATION, bearer(adminToken))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(toJson(Map.of("status", "disabled"))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("COMMON-400"))
+                .andExpect(jsonPath("$.message").value("请求体格式不合法"))
+                .andExpect(jsonPath("$.data.body").value("请求体缺失或 JSON 格式错误"));
+    }
+
+    /**
+     * 验证 Jackson 全局配置已禁止数字 ordinal，避免 {"status":0} 被解释为第一个枚举常量。
+     */
+    @Test
+    void updateUserStatusShouldRejectNumericEnumOrdinal() throws Exception {
+        long userId = registerAndReturnUserId("ordinalstatus");
+        String adminToken = loginAndExtractToken("admin", "Admin123456");
+
+        mockMvc.perform(patch("/api/v1/admin/users/{userId}/status", userId)
+                .header(HttpHeaders.AUTHORIZATION, bearer(adminToken))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"status\":0}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("COMMON-400"))
+                .andExpect(jsonPath("$.message").value("请求体格式不合法"))
+                .andExpect(jsonPath("$.data.body").value("请求体缺失或 JSON 格式错误"));
+    }
+
+    /**
      * 验证没有 token 时访问受保护接口会进入认证失败入口。
      */
     @Test
@@ -465,6 +537,11 @@ class AuthIntegrationTest {
                 .andExpect(status().isOk())
                 .andReturn();
         return objectMapper.readTree(result.getResponse().getContentAsString()).path("data");
+    }
+
+    private long registerAndReturnUserId(String usernamePrefix) throws Exception {
+        String username = nextUsername(usernamePrefix);
+        return register(username, nextEmail(username)).path("id").asLong();
     }
 
     private int registerAndReturnStatus(String username, String email) throws Exception {

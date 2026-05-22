@@ -55,7 +55,14 @@ public class AdminUserQueryRequest {
     private String email;
 
     /**
-     * 用户状态筛选。为了让非法状态稳定进入参数校验分支，这里先用字符串接收，再转换为 UserStatus。
+     * 用户状态筛选。
+     *
+     * <p>
+     * {@code @ModelAttribute} 查询参数绑定不走 Jackson，而是由 Spring MVC 类型转换器处理。
+     * 如果这里直接声明为 {@link UserStatus}，{@code status=LOCKED} 会在字符串转枚举阶段失败，错误信息更偏框架类型转换；
+     * 先用字符串承接原始输入，再用 {@link Pattern} 声明允许值，可以让非法状态稳定进入 Bean Validation，
+     * 返回更明确的“用户状态只能是 ENABLED 或 DISABLED”。校验通过后再在 {@link #parseStatus()} 中转换为领域枚举。
+     * </p>
      */
     @Pattern(regexp = "^(ENABLED|DISABLED)?$", message = "用户状态只能是 ENABLED 或 DISABLED")
     private String status;
