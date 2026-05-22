@@ -16,7 +16,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.3.2</version>
+        <version>3.5.14</version>
         <!--
             relativePath 置空表示不从当前仓库的相对路径寻找父 POM，而是直接使用 Maven 仓库中的 Spring Boot 父工程。
             这样当前 backend 模块可以作为独立 Spring Boot 应用构建，不依赖仓库根目录必须存在父工程。
@@ -43,15 +43,15 @@
     <properties>
         <!-- Spring Boot 3.x 要求 Java 17+，这里固定为 17，兼顾现代语言特性与部署环境普遍兼容性。 -->
         <java.version>17</java.version>
-        <!-- Springdoc 用于生成 OpenAPI 文档和 Swagger UI，独立声明版本避免和业务依赖混在一起。 -->
-        <springdoc.version>2.6.0</springdoc.version>
-        <!-- Flyway 负责数据库迁移，core 与 MySQL 扩展使用同一版本，减少迁移引擎内部模块不一致的风险。 -->
-        <flyway.version>10.10.0</flyway.version>
+        <!-- Springdoc 用于生成 OpenAPI 文档和 Swagger UI，2.8.x 分支兼容 Spring Boot 3.5 / Spring Framework 6.2。 -->
+        <springdoc.version>2.8.17</springdoc.version>
+        <!-- Flyway 负责数据库迁移，11.x 分支与当前 Spring Boot 3.5 依赖组合更匹配。 -->
+        <flyway.version>11.7.2</flyway.version>
         <!-- JJWT 用于签发与解析阶段 1 的 access token，版本集中声明便于后续安全升级。 -->
         <jjwt.version>0.12.6</jjwt.version>
         <!--
             MyBatis Spring Boot Starter 版本。
-            当前项目使用 Spring Boot 3.3.2 / Java 17，因此选择兼容 Spring Boot 3.x 的 3.0.x 分支；
+            当前项目使用 Spring Boot 3.5.14 / Java 17，因此选择兼容 Spring Boot 3.x 的 3.0.x 分支；
             4.x 分支面向 Spring Boot 4.x，不适合当前后端基线。
         -->
         <mybatis-spring-boot.version>3.0.5</mybatis-spring-boot.version>
