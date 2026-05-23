@@ -52,7 +52,7 @@ docker-compose.yml
 
 前置条件：
 
-- Java 17
+- Java 21
 - Maven 3.9+
 - Docker / Docker Compose
 
