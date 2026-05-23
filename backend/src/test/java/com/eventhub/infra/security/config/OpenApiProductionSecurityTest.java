@@ -1,6 +1,7 @@
 package com.eventhub.infra.security.config;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -8,8 +9,14 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
  * 生产 profile 下 OpenAPI / Swagger UI 暴露面的安全回归测试。
@@ -37,6 +44,9 @@ class OpenApiProductionSecurityTest {
     @Autowired
     private MockMvc mockMvc;
 
+    @Autowired
+    private ObjectMapper objectMapper;
+
     /**
      * 生产环境关闭 springdoc 后，OpenAPI JSON 路径不应继续作为公开资源暴露。
      */
@@ -58,6 +68,25 @@ class OpenApiProductionSecurityTest {
     }
 
     /**
+     * 生产环境不只是撤掉文档路径的匿名白名单，还会关闭 springdoc 资源本身。
+     * 因此即使携带合法管理员 token，也不应该拿到 OpenAPI JSON 或 Swagger UI 页面。
+     */
+    @Test
+    void documentationShouldNotBeServedWithAuthenticationInProduction() throws Exception {
+        String adminToken = loginAndExtractToken("admin", "Admin123456");
+
+        mockMvc.perform(get("/v3/api-docs")
+                .header(HttpHeaders.AUTHORIZATION, bearer(adminToken)))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("COMMON-404"));
+
+        mockMvc.perform(get("/swagger-ui.html")
+                .header(HttpHeaders.AUTHORIZATION, bearer(adminToken)))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("COMMON-404"));
+    }
+
+    /**
      * OpenAPI 加固不应误伤基础探活；生产环境仍允许负载均衡或平台探测健康状态。
      */
     @Test
@@ -66,5 +95,25 @@ class OpenApiProductionSecurityTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("UP"))
                 .andExpect(jsonPath("$.components").doesNotExist());
+    }
+
+    private String loginAndExtractToken(String usernameOrEmail, String password) throws Exception {
+        MvcResult result = mockMvc.perform(post("/api/v1/auth/login")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                        {
+                          "usernameOrEmail": "%s",
+                          "password": "%s"
+                        }
+                        """.formatted(usernameOrEmail, password)))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        JsonNode responseBody = objectMapper.readTree(result.getResponse().getContentAsString());
+        return responseBody.path("data").path("accessToken").asText();
+    }
+
+    private String bearer(String token) {
+        return "Bearer " + token;
     }
 }
