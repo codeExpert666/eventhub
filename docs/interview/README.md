@@ -16,7 +16,13 @@
 docs/interview/
 ├── README.md
 ├── interview-docs-design.md
-└── stage-0-foundation/
+├── stage-0-foundation/
+│   ├── README.md
+│   ├── design-summary.md
+│   ├── implementation-review.md
+│   ├── decisions-and-tradeoffs.md
+│   └── resume-talking-points.md
+└── stage-1-auth-jwt-rbac/
     ├── README.md
     ├── design-summary.md
     ├── implementation-review.md
