@@ -115,7 +115,14 @@ management:
       show-components: always
 
 springdoc:
+  api-docs:
+    # 非生产环境默认生成 OpenAPI JSON，便于自动化测试、接口联调和学习演示。
+    # 生产环境会在 application-prod.yml 中关闭，避免默认暴露完整接口契约。
+    enabled: true
   swagger-ui:
+    # 非生产环境默认启用 Swagger UI，作为浏览器侧接口调试入口。
+    # 生产环境会在 application-prod.yml 中关闭，避免暴露交互式接口文档页面。
+    enabled: true
     # 固定 Swagger UI 访问路径，便于 README、联调文档和浏览器访问入口保持一致。
     path: /swagger-ui.html
 

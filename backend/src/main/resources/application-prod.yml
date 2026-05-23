@@ -82,6 +82,14 @@ management:
       show-details: never
       show-components: never
 
+springdoc:
+  api-docs:
+    # 生产环境默认关闭 OpenAPI JSON，避免对外暴露接口路径、请求响应模型和枚举契约。
+    enabled: false
+  swagger-ui:
+    # 生产环境默认关闭 Swagger UI，开发联调请使用 dev/test profile 或受控的非生产环境。
+    enabled: false
+
 eventhub:
   security:
     jwt:
