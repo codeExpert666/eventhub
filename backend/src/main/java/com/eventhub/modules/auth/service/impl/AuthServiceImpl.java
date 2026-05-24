@@ -1,9 +1,11 @@
 package com.eventhub.modules.auth.service.impl;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.springframework.dao.DuplicateKeyException;
@@ -26,6 +28,7 @@ import com.eventhub.modules.auth.mapper.RoleMapper;
 import com.eventhub.modules.auth.mapper.UserMapper;
 import com.eventhub.modules.auth.mapper.param.UserQueryCriteria;
 import com.eventhub.modules.auth.mapper.result.UserRoleCodeResult;
+import com.eventhub.modules.auth.service.AuthSessionService;
 import com.eventhub.modules.auth.service.AuthService;
 import com.eventhub.modules.auth.service.TokenService;
 import com.eventhub.modules.auth.vo.LoginResponse;
@@ -53,6 +56,7 @@ public class AuthServiceImpl implements AuthService {
     private final RoleMapper roleMapper;
     private final PasswordEncoder passwordEncoder;
     private final TokenService tokenService;
+    private final AuthSessionService authSessionService;
 
     /**
      * 注册普通用户。
@@ -116,15 +120,30 @@ public class AuthServiceImpl implements AuthService {
      * 用户登录。
      * 登录失败时不区分账号不存在和密码错误，降低账号枚举风险。
      *
+     * <p>
+     * 登录成功后创建服务端认证会话，并将 access token 的 sid claim 与该会话关联。
+     * refresh token 明文只在本次响应中返回；落库时由 AuthSessionService 转换为哈希值。
+     * </p>
+     *
      * @param request 登录请求
      * @return 登录 token 与用户摘要
      */
     @Override
+    @Transactional
     public LoginResponse login(LoginRequest request) {
+        /*
+         * 先统一登录标识格式，再按“用户名或邮箱”查询用户。
+         * 查询不到用户时抛出 badCredentials，和后续密码错误保持同一种失败语义，
+         * 避免调用方通过错误响应差异判断某个用户名或邮箱是否存在。
+         */
         String usernameOrEmail = normalizeLoginIdentifier(request.usernameOrEmail());
         UserEntity user = userMapper.findByUsernameOrEmail(usernameOrEmail)
                 .orElseThrow(AuthException::badCredentials);
 
+        /*
+         * 密码校验必须使用 PasswordEncoder.matches，由具体编码器处理哈希算法和盐值。
+         * 状态校验放在密码校验之后，既保证禁用账号无法登录，也避免在密码错误时额外泄露账号状态。
+         */
         if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {
             throw AuthException.badCredentials();
         }
@@ -132,11 +151,47 @@ public class AuthServiceImpl implements AuthService {
             throw AuthException.disabledUser();
         }
 
+        /*
+         * 登录响应和 token 只需要用户摘要信息。
+         * 这里先转换为 UserInfo，避免 passwordHash 等持久化内部字段越过 service 边界。
+         */
         UserInfo userInfo = toUserInfo(user);
+
+        /*
+         * 每次登录创建独立服务端会话：
+         * - sessionId 会写入 access token 的 sid claim，用于后续定位服务端会话；
+         * - refresh token 明文只返回给客户端一次，落库细节由 AuthSessionService 负责处理；
+         * - refresh token 的过期时间和签发时间使用同一个 issuedAt 基准，避免时间计算出现细微偏差。
+         */
+        String sessionId = newSessionId();
+        String refreshToken = tokenService.issueRefreshToken();
+        LocalDateTime issuedAt = LocalDateTime.now();
+        long refreshExpiresIn = tokenService.refreshTokenTtlSeconds();
+        LocalDateTime refreshExpiresAt = issuedAt.plusSeconds(refreshExpiresIn);
+
+        /*
+         * 会话创建与登录响应处于同一事务边界内。
+         * 如果服务端会话没有成功落库，就不应该把已经关联该 sessionId 的 token 返回给客户端。
+         */
+        authSessionService.createActiveSession(
+                userInfo.id(),
+                sessionId,
+                refreshToken,
+                issuedAt,
+                refreshExpiresAt
+        );
+
+        /*
+         * 最后再签发 access token，确保 token 中的 sid 已经对应一条可查询的服务端会话。
+         * refresh token 本身不放入 access token，只通过响应体返回给客户端保存。
+         */
         return new LoginResponse(
-                tokenService.issueAccessToken(userInfo),
+                tokenService.issueAccessToken(userInfo, sessionId),
+                refreshToken,
                 TOKEN_TYPE_BEARER,
                 tokenService.accessTokenTtlSeconds(),
+                refreshExpiresIn,
+                sessionId,
                 userInfo
         );
     }
@@ -301,5 +356,13 @@ public class AuthServiceImpl implements AuthService {
             return trimmed.toLowerCase(Locale.ROOT);
         }
         return trimmed;
+    }
+
+    private String newSessionId() {
+        // UUID 是 JDK 提供的通用唯一标识符类型，这里使用 randomUUID() 生成随机版本的 UUID。
+        // sessionId 只作为服务端认证会话的公开标识，不携带用户 ID、状态或过期时间等业务信息。
+        // 真正的会话状态仍然以 auth_sessions 表为准，这样后续才能支持服务端吊销和会话管理。
+        // toString() 会把 UUID 转成标准字符串格式，例如 xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx，便于存库和放入 JWT sid claim。
+        return UUID.randomUUID().toString();
     }
 }

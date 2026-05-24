@@ -52,9 +52,9 @@ public class AuthController {
      * 用户登录。
      *
      * @param request 登录请求
-     * @return access token 与当前用户摘要
+     * @return access token、refresh token、会话标识与当前用户摘要
      */
-    @Operation(summary = "用户登录", description = "校验账号密码并签发 JWT access token")
+    @Operation(summary = "用户登录", description = "校验账号密码并签发 access token、refresh token 与服务端认证会话")
     @PostMapping("/login")
     public ApiResponse<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
         return ApiResponse.success(authService.login(request));

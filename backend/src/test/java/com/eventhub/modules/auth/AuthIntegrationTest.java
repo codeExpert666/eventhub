@@ -29,12 +29,17 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
 import com.eventhub.infra.security.jwt.JwtClaims;
 import com.eventhub.infra.security.jwt.JwtCodec;
+import com.eventhub.modules.auth.entity.AuthSessionEntity;
+import com.eventhub.modules.auth.enums.AuthSessionStatus;
+import com.eventhub.modules.auth.mapper.AuthSessionMapper;
+import com.eventhub.modules.auth.service.RefreshTokenHasher;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -57,6 +62,15 @@ class AuthIntegrationTest {
 
     @Autowired
     private JwtCodec jwtCodec;
+
+    @Autowired
+    private AuthSessionMapper authSessionMapper;
+
+    @Autowired
+    private RefreshTokenHasher refreshTokenHasher;
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
 
     /**
      * 验证注册成功后会返回用户摘要，并默认绑定 USER 角色。
@@ -155,14 +169,15 @@ class AuthIntegrationTest {
     }
 
     /**
-     * 验证登录成功后返回 Bearer access token、过期秒数和当前用户摘要。
+     * 验证登录成功后返回双 token、创建 ACTIVE 认证会话，并且 refresh token 明文不会落库。
      */
     @Test
-    void loginShouldReturnAccessToken() throws Exception {
+    void loginShouldReturnTokenPairAndCreateActiveSession() throws Exception {
         String username = nextUsername("loginok");
-        register(username, nextEmail(username));
+        JsonNode registeredUser = register(username, nextEmail(username));
+        long userId = registeredUser.path("id").asLong();
 
-        mockMvc.perform(post("/api/v1/auth/login")
+        MvcResult result = mockMvc.perform(post("/api/v1/auth/login")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(toJson(Map.of(
                         "usernameOrEmail", username,
@@ -170,9 +185,30 @@ class AuthIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("COMMON-000"))
                 .andExpect(jsonPath("$.data.accessToken", notNullValue()))
+                .andExpect(jsonPath("$.data.refreshToken", notNullValue()))
                 .andExpect(jsonPath("$.data.tokenType").value("Bearer"))
                 .andExpect(jsonPath("$.data.expiresIn", greaterThan(0)))
-                .andExpect(jsonPath("$.data.user.username").value(username));
+                .andExpect(jsonPath("$.data.refreshExpiresIn").value(2_592_000))
+                .andExpect(jsonPath("$.data.sessionId", notNullValue()))
+                .andExpect(jsonPath("$.data.user.username").value(username))
+                .andReturn();
+
+        JsonNode loginData = objectMapper.readTree(result.getResponse().getContentAsString()).path("data");
+        String accessToken = loginData.path("accessToken").asText();
+        String refreshToken = loginData.path("refreshToken").asText();
+        String sessionId = loginData.path("sessionId").asText();
+        JwtClaims claims = jwtCodec.parseAccessToken(accessToken);
+
+        assertThat(refreshToken).isNotBlank();
+        assertThat(claims.tokenId()).isNotBlank();
+        assertThat(claims.sessionId()).isEqualTo(sessionId);
+        assertThat(claims.tokenType()).isEqualTo(JwtClaims.ACCESS_TOKEN_TYPE);
+
+        AuthSessionEntity session = authSessionMapper.findBySessionId(sessionId).orElseThrow();
+        assertThat(session.getUserId()).isEqualTo(userId);
+        assertThat(session.getStatus()).isEqualTo(AuthSessionStatus.ACTIVE);
+        assertThat(session.getRefreshTokenHash()).isNotEqualTo(refreshToken);
+        assertThat(authSessionMapper.findByRefreshTokenHash(refreshTokenHasher.hash(refreshToken))).isPresent();
     }
 
     /**
@@ -181,7 +217,9 @@ class AuthIntegrationTest {
     @Test
     void loginShouldRejectWrongPassword() throws Exception {
         String username = nextUsername("badpwd");
-        register(username, nextEmail(username));
+        JsonNode registeredUser = register(username, nextEmail(username));
+        long userId = registeredUser.path("id").asLong();
+        long sessionCountBeforeLogin = countAuthSessionsByUserId(userId);
 
         mockMvc.perform(post("/api/v1/auth/login")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -191,6 +229,25 @@ class AuthIntegrationTest {
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value("AUTH-401"))
                 .andExpect(jsonPath("$.message").value("账号或密码错误"));
+        assertThat(countAuthSessionsByUserId(userId)).isEqualTo(sessionCountBeforeLogin);
+    }
+
+    /**
+     * 验证不存在账号与密码错误使用同一认证失败响应，并且不会创建认证会话。
+     */
+    @Test
+    void loginShouldRejectUnknownAccount() throws Exception {
+        long sessionCountBeforeLogin = countAuthSessions();
+
+        mockMvc.perform(post("/api/v1/auth/login")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(toJson(Map.of(
+                        "usernameOrEmail", nextUsername("missing"),
+                        "password", "Password123"))))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("AUTH-401"))
+                .andExpect(jsonPath("$.message").value("账号或密码错误"));
+        assertThat(countAuthSessions()).isEqualTo(sessionCountBeforeLogin);
     }
 
     /**
@@ -210,6 +267,7 @@ class AuthIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.status").value("DISABLED"));
 
+        long sessionCountBeforeLogin = countAuthSessionsByUserId(userId);
         mockMvc.perform(post("/api/v1/auth/login")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(toJson(Map.of(
@@ -218,6 +276,7 @@ class AuthIntegrationTest {
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code").value("AUTH-403"))
                 .andExpect(jsonPath("$.message").value("用户已被禁用"));
+        assertThat(countAuthSessionsByUserId(userId)).isEqualTo(sessionCountBeforeLogin);
     }
 
     /**
@@ -338,7 +397,12 @@ class AuthIntegrationTest {
     void expiredTokenShouldReturnUnauthorized() throws Exception {
         String username = nextUsername("expired");
         JsonNode registeredUser = register(username, nextEmail(username));
-        JwtClaims claims = new JwtClaims(registeredUser.path("id").asLong());
+        JwtClaims claims = new JwtClaims(
+                registeredUser.path("id").asLong(),
+                "expired-token-id",
+                "expired-session-id",
+                JwtClaims.ACCESS_TOKEN_TYPE
+        );
         String expiredToken = jwtCodec.generateAccessToken(claims, Duration.ofSeconds(-5));
 
         mockMvc.perform(get("/api/v1/me")
@@ -557,6 +621,12 @@ class AuthIntegrationTest {
     }
 
     private String loginAndExtractToken(String usernameOrEmail, String password) throws Exception {
+        return loginAndReturnData(usernameOrEmail, password)
+                .path("accessToken")
+                .asText();
+    }
+
+    private JsonNode loginAndReturnData(String usernameOrEmail, String password) throws Exception {
         MvcResult result = mockMvc.perform(post("/api/v1/auth/login")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(toJson(Map.of(
@@ -565,9 +635,19 @@ class AuthIntegrationTest {
                 .andExpect(status().isOk())
                 .andReturn();
         return objectMapper.readTree(result.getResponse().getContentAsString())
-                .path("data")
-                .path("accessToken")
-                .asText();
+                .path("data");
+    }
+
+    private long countAuthSessions() {
+        return jdbcTemplate.queryForObject("SELECT COUNT(*) FROM auth_sessions", Long.class);
+    }
+
+    private long countAuthSessionsByUserId(long userId) {
+        return jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM auth_sessions WHERE user_id = ?",
+                Long.class,
+                userId
+        );
     }
 
     private String toJson(Map<String, String> payload) throws Exception {

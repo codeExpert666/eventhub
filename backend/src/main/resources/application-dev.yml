@@ -58,7 +58,8 @@ management:
 
 eventhub:
   security:
-    jwt:
-      # 本地开发默认 JWT 密钥，仅用于单机开发和学习演示。
-      # 如果是多人共享环境或需要模拟生产启动，请通过 EVENTHUB_JWT_SECRET 覆盖。
-      secret: ${EVENTHUB_JWT_SECRET:eventhub-dev-jwt-secret-please-change-for-shared-env}
+    auth-token:
+      access-token:
+        # 本地开发默认 access token 签名密钥，仅用于单机开发和学习演示。
+        # 如果是多人共享环境或需要模拟生产启动，请通过 EVENTHUB_ACCESS_TOKEN_SIGNING_SECRET 覆盖。
+        signing-secret: ${EVENTHUB_ACCESS_TOKEN_SIGNING_SECRET:eventhub-dev-access-token-secret-please-change}

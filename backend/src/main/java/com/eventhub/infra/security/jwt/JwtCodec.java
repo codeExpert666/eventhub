@@ -4,10 +4,13 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Date;
+import java.util.Objects;
 
 import javax.crypto.SecretKey;
 
 import org.springframework.stereotype.Component;
+
+import com.eventhub.infra.security.config.AuthTokenProperties;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
@@ -27,7 +30,10 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class JwtCodec {
 
-    private final JwtProperties jwtProperties;
+    private static final String CLAIM_SESSION_ID = "sid";
+    private static final String CLAIM_TOKEN_TYPE = "typ";
+
+    private final AuthTokenProperties authTokenProperties;
 
     /**
      * 使用配置中的默认有效期签发 access token。
@@ -36,7 +42,7 @@ public class JwtCodec {
      * @return JWT 字符串
      */
     public String generateAccessToken(JwtClaims claims) {
-        return generateAccessToken(claims, jwtProperties.getAccessTokenTtl());
+        return generateAccessToken(claims, authTokenProperties.getAccessToken().getTtl());
     }
 
     /**
@@ -52,12 +58,20 @@ public class JwtCodec {
      * @return JWT 字符串
      */
     public String generateAccessToken(JwtClaims claims, Duration ttl) {
+        Objects.requireNonNull(claims, "claims must not be null");
+        if (!JwtClaims.ACCESS_TOKEN_TYPE.equals(claims.tokenType())) {
+            throw new IllegalArgumentException("JWT typ must be access");
+        }
+
         Instant now = Instant.now();
         Instant expiresAt = now.plus(ttl);
 
         return Jwts.builder()
-                .issuer(jwtProperties.getIssuer())
+                .issuer(authTokenProperties.getIssuer())
                 .subject(String.valueOf(claims.subjectId()))
+                .id(claims.tokenId())
+                .claim(CLAIM_SESSION_ID, claims.sessionId())
+                .claim(CLAIM_TOKEN_TYPE, claims.tokenType())
                 .issuedAt(Date.from(now))
                 .expiration(Date.from(expiresAt))
                 .signWith(signingKey())
@@ -79,7 +93,7 @@ public class JwtCodec {
     public JwtClaims parseAccessToken(String token) {
         Claims payload = Jwts.parser()
                 .verifyWith(signingKey())
-                .requireIssuer(jwtProperties.getIssuer())
+                .requireIssuer(authTokenProperties.getIssuer())
                 .build()
                 .parseSignedClaims(token)
                 .getPayload();
@@ -88,27 +102,36 @@ public class JwtCodec {
         if (subject == null || subject.isBlank()) {
             throw new IllegalArgumentException("JWT subject is required");
         }
+
+        String tokenId = payload.getId();
+        if (tokenId == null || tokenId.isBlank()) {
+            throw new IllegalArgumentException("JWT jti is required");
+        }
+
+        String sessionId = payload.get(CLAIM_SESSION_ID, String.class);
+        if (sessionId == null || sessionId.isBlank()) {
+            throw new IllegalArgumentException("JWT sid is required");
+        }
+
+        String tokenType = payload.get(CLAIM_TOKEN_TYPE, String.class);
+        if (!JwtClaims.ACCESS_TOKEN_TYPE.equals(tokenType)) {
+            throw new IllegalArgumentException("JWT typ must be access");
+        }
+
         try {
-            return new JwtClaims(Long.valueOf(subject));
+            return new JwtClaims(Long.valueOf(subject), tokenId, sessionId, tokenType);
         } catch (NumberFormatException exception) {
             throw new IllegalArgumentException("JWT subject must be numeric", exception);
         }
     }
 
-    /**
-     * 读取默认 access token 有效秒数。
-     *
-     * @return 有效秒数
-     */
-    public long accessTokenTtlSeconds() {
-        return jwtProperties.getAccessTokenTtl().toSeconds();
-    }
-
     private SecretKey signingKey() {
         /*
-         * JwtProperties 已通过启动期校验保证 secret 非空且长度满足最低要求。
+         * AuthTokenProperties 已通过启动期校验保证 access token 签名密钥非空且长度满足最低要求。
          * Keys.hmacShaKeyFor 会在算法要求不满足时继续快速失败，避免使用弱密钥签发 token。
          */
-        return Keys.hmacShaKeyFor(jwtProperties.getSecret().getBytes(StandardCharsets.UTF_8));
+        return Keys.hmacShaKeyFor(authTokenProperties.getAccessToken()
+                .getSigningSecret()
+                .getBytes(StandardCharsets.UTF_8));
     }
 }

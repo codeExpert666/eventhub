@@ -9,8 +9,8 @@ import com.eventhub.modules.auth.entity.AuthSessionEntity;
  * 认证会话应用服务接口。
  *
  * <p>
- * 当前只定义后续 refresh/logout 需要的最小服务骨架，不接入现有登录响应和 JWT Filter。
- * 这样可以先稳定服务端会话持久化模型，再分阶段引入双 token 与服务端吊销流程。
+ * 当前登录成功路径会创建 ACTIVE 会话；refresh/logout 会在后续任务中继续接入。
+ * 这样可以先完成双 token 登录闭环，再分阶段引入 token 轮换与服务端吊销流程。
  * </p>
  */
 public interface AuthSessionService {

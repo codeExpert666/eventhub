@@ -63,6 +63,7 @@ management:
 
 eventhub:
   security:
-    jwt:
-      # 测试环境使用固定密钥，保证 JWT 集成测试可重复执行。
-      secret: eventhub-test-jwt-secret-for-auth-integration-coverage
+    auth-token:
+      access-token:
+        # 测试环境使用固定密钥，保证 JWT 集成测试可重复执行。
+        signing-secret: eventhub-test-access-token-secret-for-auth-tests

@@ -17,19 +17,18 @@ import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 import com.eventhub.infra.security.jwt.JwtAuthenticationFilter;
-import com.eventhub.infra.security.jwt.JwtProperties;
 
 /**
  * Spring Security 全局配置。
  *
  * <p>
  * 本项目采用前后端分离的无状态 JWT 认证：登录成功后服务端签发 access token，
- * 后续请求通过 Authorization Bearer Header 携带 token，不使用服务端 Session 保存登录态。
+ * 后续请求通过 Authorization Bearer Header 携带 token，不使用 Servlet HTTP Session 保存认证上下文。
  * </p>
  */
 @Configuration
 @EnableMethodSecurity
-@EnableConfigurationProperties(JwtProperties.class)
+@EnableConfigurationProperties(AuthTokenProperties.class)
 public class SecurityConfig {
 
     /**

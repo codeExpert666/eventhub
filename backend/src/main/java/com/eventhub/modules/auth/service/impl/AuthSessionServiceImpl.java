@@ -19,7 +19,7 @@ import lombok.RequiredArgsConstructor;
  *
  * <p>
  * 该实现只封装服务端会话的持久化语义：创建时哈希 refresh token，吊销时只允许 ACTIVE 会话转为 REVOKED。
- * 当前不会被登录或登出流程调用，避免本次基础建模影响既有无状态 access token 认证行为。
+ * 登录流程会调用创建方法生成 ACTIVE 会话；登出流程暂不接入服务端吊销，后续可在当前服务边界内继续扩展。
  * </p>
  */
 @Service

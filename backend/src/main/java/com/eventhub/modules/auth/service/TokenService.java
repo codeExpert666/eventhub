@@ -15,10 +15,22 @@ public interface TokenService {
     /**
      * 为登录成功的用户签发 access token。
      *
-     * @param userInfo 登录成功后的用户摘要
+     * @param userInfo  登录成功后的用户摘要
+     * @param sessionId 服务端认证会话标识
      * @return access token
      */
-    String issueAccessToken(UserInfo userInfo);
+    String issueAccessToken(UserInfo userInfo, String sessionId);
+
+    /**
+     * 生成 opaque refresh token。
+     *
+     * <p>
+     * refresh token 明文只返回给客户端一次，服务端落库时只保存哈希。
+     * </p>
+     *
+     * @return refresh token 明文
+     */
+    String issueRefreshToken();
 
     /**
      * 当前 access token 默认有效秒数。
@@ -26,4 +38,11 @@ public interface TokenService {
      * @return 有效秒数
      */
     long accessTokenTtlSeconds();
+
+    /**
+     * 当前 refresh token 默认有效秒数。
+     *
+     * @return 有效秒数
+     */
+    long refreshTokenTtlSeconds();
 }

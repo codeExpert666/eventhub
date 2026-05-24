@@ -92,7 +92,8 @@ springdoc:
 
 eventhub:
   security:
-    jwt:
-      # 生产 JWT 签名密钥，必须由部署环境显式提供。
-      # 不设置默认值是为了让缺失密钥的生产启动快速失败，避免所有实例共享仓库内置弱密钥。
-      secret: ${EVENTHUB_JWT_SECRET}
+    auth-token:
+      access-token:
+        # 生产 access token 签名密钥，必须由部署环境显式提供。
+        # 不设置默认值是为了让缺失密钥的生产启动快速失败，避免所有实例共享仓库内置弱密钥。
+        signing-secret: ${EVENTHUB_ACCESS_TOKEN_SIGNING_SECRET}

@@ -23,7 +23,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  *
  * <p>
  * 该测试使用 {@code prod} profile 启动真实的 Spring Security Filter Chain，
- * 但通过测试属性把生产数据库、Redis 和 JWT 密钥占位符替换成可自包含的测试值。
+ * 但通过测试属性把生产数据库、Redis 和 access token 签名密钥占位符替换成可自包含的测试值。
  * 这样既能验证生产配置行为，又不会依赖开发者本机的真实生产级外部服务。
  */
 @SpringBootTest(properties = {
@@ -35,7 +35,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
         "spring.data.redis.port=6379",
         "spring.data.redis.password=",
         "management.health.redis.enabled=false",
-        "eventhub.security.jwt.secret=eventhub-prod-openapi-test-secret"
+        "eventhub.security.auth-token.access-token.signing-secret=eventhub-prod-openapi-test-secret"
 })
 @AutoConfigureMockMvc
 @ActiveProfiles("prod")
