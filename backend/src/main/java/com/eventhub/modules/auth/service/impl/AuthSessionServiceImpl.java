@@ -29,6 +29,22 @@ public class AuthSessionServiceImpl implements AuthSessionService {
     private final AuthSessionMapper authSessionMapper;
     private final RefreshTokenHasher refreshTokenHasher;
 
+    /**
+     * 创建 ACTIVE 认证会话。
+     *
+     * <p>
+     * 这里的 {@link Transactional} 是 Spring 声明式事务边界，不是数据库事务本身。
+     * Spring 会在代理调用本方法时开启或加入事务，并把底层 JDBC 操作绑定到同一个数据库连接上；
+     * 方法正常返回时提交，抛出运行时异常时回滚。
+     * </p>
+     *
+     * <p>
+     * 当前实现表面上只有一次 insert，但 insert 后仍会校验受影响行数和主键回填结果。
+     * 如果该方法被登录流程之外的调用方单独复用，事务可以保证“会话创建成功”这一业务语义整体成立：
+     * 一旦后续校验失败，就回滚已经写入的 ACTIVE 会话，避免调用方感知失败但数据库残留有效会话。
+     * 在 {@code AuthServiceImpl.login} 的外层事务内调用时，默认 REQUIRED 传播行为会加入外层事务。
+     * </p>
+     */
     @Override
     @Transactional
     public AuthSessionEntity createActiveSession(
