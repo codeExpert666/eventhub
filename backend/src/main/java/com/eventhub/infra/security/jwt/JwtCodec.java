@@ -92,33 +92,41 @@ public class JwtCodec {
      */
     public JwtClaims parseAccessToken(String token) {
         Claims payload = Jwts.parser()
+                // 使用当前服务的签名密钥校验 token 签名，防止 payload 被篡改。
                 .verifyWith(signingKey())
+                // 只接受当前系统配置的 issuer，避免接收其他系统签发的 token。
                 .requireIssuer(authTokenProperties.getIssuer())
                 .build()
+                // 解析 JWS，并由 JJWT 校验 exp 等标准时间声明；校验通过后才能取得 payload。
                 .parseSignedClaims(token)
                 .getPayload();
 
+        // sub 保存当前登录用户 ID，是构造认证主体的基础身份声明。
         String subject = payload.getSubject();
         if (subject == null || subject.isBlank()) {
             throw new IllegalArgumentException("JWT subject is required");
         }
 
+        // jti 是 token 的唯一标识，后续可用于审计、追踪或黑名单失效。
         String tokenId = payload.getId();
         if (tokenId == null || tokenId.isBlank()) {
             throw new IllegalArgumentException("JWT jti is required");
         }
 
+        // sid 标识本次登录会话，用于把 access token 与服务端会话语义关联起来。
         String sessionId = payload.get(CLAIM_SESSION_ID, String.class);
         if (sessionId == null || sessionId.isBlank()) {
             throw new IllegalArgumentException("JWT sid is required");
         }
 
+        // typ 必须是 access，避免 refresh token 或其他类型 token 被误用于接口认证。
         String tokenType = payload.get(CLAIM_TOKEN_TYPE, String.class);
         if (!JwtClaims.ACCESS_TOKEN_TYPE.equals(tokenType)) {
             throw new IllegalArgumentException("JWT typ must be access");
         }
 
         try {
+            // subject 在本系统中必须是可转换为 Long 的用户 ID。
             return new JwtClaims(Long.valueOf(subject), tokenId, sessionId, tokenType);
         } catch (NumberFormatException exception) {
             throw new IllegalArgumentException("JWT subject must be numeric", exception);
