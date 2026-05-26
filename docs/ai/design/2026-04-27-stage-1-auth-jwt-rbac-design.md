@@ -144,7 +144,7 @@ POST /api/v1/auth/login
   "message": "成功",
   "data": {
     "accessToken": "jwt-token",
-    "tokenType": "Bearer",
+    "authorizationScheme": "Bearer",
     "expiresIn": 1800,
     "user": {
       "id": 1,

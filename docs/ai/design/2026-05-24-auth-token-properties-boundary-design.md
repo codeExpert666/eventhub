@@ -71,7 +71,7 @@
 {
   "accessToken": "...",
   "refreshToken": "...",
-  "tokenType": "Bearer",
+  "authorizationScheme": "Bearer",
   "expiresIn": 1800,
   "refreshExpiresIn": 2592000,
   "sessionId": "...",

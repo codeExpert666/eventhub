@@ -92,7 +92,7 @@ curl -s -X POST 'http://localhost:8080/api/v1/auth/login' \
 {
   "accessToken": "...",
   "refreshToken": "...",
-  "tokenType": "Bearer",
+  "authorizationScheme": "Bearer",
   "expiresIn": 1800,
   "refreshExpiresIn": 2592000,
   "sessionId": "...",

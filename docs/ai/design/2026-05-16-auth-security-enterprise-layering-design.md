@@ -90,7 +90,7 @@
   - `PATCH /api/v1/admin/users/{userId}/status`
 - 响应结构保持不变：
   - 成功响应继续使用 `ApiResponse.success(...)`。
-  - 登录响应继续返回 `accessToken`、`tokenType`、`expiresIn` 和 `user`。
+  - 登录响应继续返回 `accessToken`、`authorizationScheme`、`expiresIn` 和 `user`。
   - 认证失败继续返回 `AUTH-401`。
   - 权限不足继续返回 `AUTH-403`。
 - Security 配置继续保持：

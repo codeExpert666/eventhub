@@ -160,7 +160,7 @@ PATCH /api/v1/admin/users/{userId}/status
 ```json
 {
   "accessToken": "jwt-token",
-  "tokenType": "Bearer",
+  "authorizationScheme": "Bearer",
   "expiresIn": 1800,
   "user": {
     "id": 1,

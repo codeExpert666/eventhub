@@ -186,7 +186,7 @@ class AuthIntegrationTest {
                 .andExpect(jsonPath("$.code").value("COMMON-000"))
                 .andExpect(jsonPath("$.data.accessToken", notNullValue()))
                 .andExpect(jsonPath("$.data.refreshToken", notNullValue()))
-                .andExpect(jsonPath("$.data.tokenType").value("Bearer"))
+                .andExpect(jsonPath("$.data.authorizationScheme").value("Bearer"))
                 .andExpect(jsonPath("$.data.expiresIn", greaterThan(0)))
                 .andExpect(jsonPath("$.data.refreshExpiresIn").value(2_592_000))
                 .andExpect(jsonPath("$.data.sessionId", notNullValue()))

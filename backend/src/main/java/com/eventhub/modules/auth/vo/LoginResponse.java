@@ -9,7 +9,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
  *
  * @param accessToken      JWT access token
  * @param refreshToken     opaque refresh token
- * @param tokenType        token 类型，当前固定为 Bearer
+ * @param authorizationScheme HTTP Authorization 授权方案，当前固定为 Bearer
  * @param expiresIn        access token 有效秒数
  * @param refreshExpiresIn refresh token 有效秒数
  * @param sessionId        服务端认证会话标识
@@ -23,8 +23,8 @@ public record LoginResponse(
         @Schema(description = "opaque refresh token")
         String refreshToken,
 
-        @Schema(description = "token 类型", example = "Bearer")
-        String tokenType,
+        @Schema(description = "HTTP Authorization 授权方案", example = "Bearer")
+        String authorizationScheme,
 
         @Schema(description = "access token 有效秒数", example = "1800")
         long expiresIn,

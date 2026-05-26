@@ -92,7 +92,7 @@ REVOKED
 {
   "accessToken": "...",
   "refreshToken": "...",
-  "tokenType": "Bearer",
+  "authorizationScheme": "Bearer",
   "expiresIn": 1800,
   "refreshExpiresIn": 2592000,
   "sessionId": "...",
@@ -109,7 +109,7 @@ REVOKED
 - 字段说明：
   - `accessToken`：JWT access token，后续访问受保护接口时放入 `Authorization: Bearer ...`。
   - `refreshToken`：opaque refresh token，仅登录响应明文返回一次。
-  - `tokenType`：保持 `Bearer`。
+  - `authorizationScheme`：HTTP Authorization 授权方案，保持 `Bearer`。
   - `expiresIn`：access token 有效秒数，保持原语义。
   - `refreshExpiresIn`：refresh token 有效秒数，默认 30 天。
   - `sessionId`：服务端认证会话标识，对应 `auth_sessions.session_id`。

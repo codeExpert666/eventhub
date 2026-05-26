@@ -50,7 +50,7 @@ import lombok.RequiredArgsConstructor;
 public class AuthServiceImpl implements AuthService {
 
     private static final String ROLE_USER = "USER";
-    private static final String TOKEN_TYPE_BEARER = "Bearer";
+    private static final String AUTHORIZATION_SCHEME_BEARER = "Bearer";
 
     private final UserMapper userMapper;
     private final RoleMapper roleMapper;
@@ -188,7 +188,7 @@ public class AuthServiceImpl implements AuthService {
         return new LoginResponse(
                 tokenService.issueAccessToken(userInfo, sessionId),
                 refreshToken,
-                TOKEN_TYPE_BEARER,
+                AUTHORIZATION_SCHEME_BEARER,
                 tokenService.accessTokenTtlSeconds(),
                 refreshExpiresIn,
                 sessionId,
