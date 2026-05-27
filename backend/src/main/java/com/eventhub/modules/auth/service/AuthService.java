@@ -4,9 +4,11 @@ import com.eventhub.common.api.PageResponse;
 import com.eventhub.infra.security.principal.AuthenticatedPrincipal;
 import com.eventhub.modules.auth.dto.request.AdminUserQueryRequest;
 import com.eventhub.modules.auth.dto.request.LoginRequest;
+import com.eventhub.modules.auth.dto.request.RefreshTokenRequest;
 import com.eventhub.modules.auth.dto.request.RegisterRequest;
 import com.eventhub.modules.auth.dto.request.UpdateUserStatusRequest;
 import com.eventhub.modules.auth.vo.LoginResponse;
+import com.eventhub.modules.auth.vo.TokenPairResponse;
 import com.eventhub.modules.auth.vo.UserInfo;
 
 /**
@@ -34,6 +36,14 @@ public interface AuthService {
      * @return 登录 token 与用户摘要
      */
     LoginResponse login(LoginRequest request);
+
+    /**
+     * 使用 refresh token 轮换新的 token pair。
+     *
+     * @param request refresh token 请求
+     * @return 新的 access token、refresh token 与用户摘要
+     */
+    TokenPairResponse refresh(RefreshTokenRequest request);
 
     /**
      * 用户登出。

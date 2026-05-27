@@ -52,6 +52,20 @@ public class AuthException extends BusinessException {
     }
 
     /**
+     * refresh token 无效、过期、重放或对应会话不可用。
+     *
+     * <p>
+     * refresh token 是长期认证凭证，失败时不区分具体原因，避免调用方通过错误文案判断
+     * 某个 token 是否曾经有效、会话是否存在或用户当前状态。
+     * </p>
+     *
+     * @return 认证失败异常
+     */
+    public static AuthException invalidRefreshToken() {
+        return new AuthException(ErrorCode.AUTHENTICATION_FAILED, "refresh token 无效或已过期");
+    }
+
+    /**
      * 用户已被禁用。
      *
      * @return 访问拒绝异常

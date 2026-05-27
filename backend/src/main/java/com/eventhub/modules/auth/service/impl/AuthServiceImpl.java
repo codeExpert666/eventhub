@@ -1,40 +1,35 @@
 package com.eventhub.modules.auth.service.impl;
 
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Objects;
-import java.util.UUID;
-import java.util.stream.Collectors;
-
-import org.springframework.dao.DuplicateKeyException;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import com.eventhub.common.api.PageRequest;
 import com.eventhub.common.api.PageResponse;
 import com.eventhub.infra.security.principal.AuthenticatedPrincipal;
-import com.eventhub.modules.auth.dto.request.AdminUserQueryRequest;
-import com.eventhub.modules.auth.dto.request.LoginRequest;
-import com.eventhub.modules.auth.dto.request.RegisterRequest;
-import com.eventhub.modules.auth.dto.request.UpdateUserStatusRequest;
+import com.eventhub.modules.auth.dto.request.*;
+import com.eventhub.modules.auth.entity.AuthSessionEntity;
 import com.eventhub.modules.auth.entity.RoleEntity;
 import com.eventhub.modules.auth.entity.UserEntity;
+import com.eventhub.modules.auth.enums.AuthSessionStatus;
 import com.eventhub.modules.auth.enums.UserStatus;
 import com.eventhub.modules.auth.exception.AuthException;
 import com.eventhub.modules.auth.mapper.RoleMapper;
 import com.eventhub.modules.auth.mapper.UserMapper;
 import com.eventhub.modules.auth.mapper.param.UserQueryCriteria;
 import com.eventhub.modules.auth.mapper.result.UserRoleCodeResult;
-import com.eventhub.modules.auth.service.AuthSessionService;
 import com.eventhub.modules.auth.service.AuthService;
+import com.eventhub.modules.auth.service.AuthSessionService;
+import com.eventhub.modules.auth.service.RefreshTokenParser;
 import com.eventhub.modules.auth.service.TokenService;
 import com.eventhub.modules.auth.vo.LoginResponse;
+import com.eventhub.modules.auth.vo.TokenPairResponse;
 import com.eventhub.modules.auth.vo.UserInfo;
-
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DuplicateKeyException;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * 认证授权应用服务实现。
@@ -57,6 +52,7 @@ public class AuthServiceImpl implements AuthService {
     private final PasswordEncoder passwordEncoder;
     private final TokenService tokenService;
     private final AuthSessionService authSessionService;
+    private final RefreshTokenParser refreshTokenParser;
 
     /**
      * 注册普通用户。
@@ -192,6 +188,90 @@ public class AuthServiceImpl implements AuthService {
                 tokenService.accessTokenTtlSeconds(),
                 refreshExpiresIn,
                 sessionId,
+                userInfo
+        );
+    }
+
+    /**
+     * 使用 refresh token 轮换新的 token pair。
+     *
+     * <p>
+     * refresh token 是长期凭证，失败原因统一收敛为 {@code AUTH-401}：
+     * 调用方不应通过响应差异判断 token 是过期、篡改、重放、会话吊销还是用户禁用。
+     * 对客户端来说这些失败都应清理凭证并重新登录；对攻击者则不能通过响应差异探测
+     * token 是否曾经有效、会话或用户状态，以及是否发生过重放。
+     * 真正的并发安全由 AuthSessionService 内部的条件更新保证。
+     * </p>
+     *
+     * @param request refresh token 请求
+     * @return 新的 token pair 与用户摘要
+     */
+    @Override
+    @Transactional
+    public TokenPairResponse refresh(RefreshTokenRequest request) {
+        /*
+         * 考虑到 service 之间也可能会相互调用，从而绕过 controller 的校验。
+         * 这里有必要进行防御性校验。
+         */
+        Objects.requireNonNull(request, "request must not be null");
+
+        /*
+         * refresh token 先做最小格式校验，再进入哈希查询。
+         * 格式错误和后续业务校验失败都使用同一种认证失败语义，避免对外暴露差异。
+         */
+        String oldRefreshToken = refreshTokenParser.parse(request.refreshToken());
+        LocalDateTime refreshedAt = LocalDateTime.now();
+
+        /*
+         * 通过旧 refresh token 定位服务端会话。
+         * 会话必须仍处于 ACTIVE 且 refresh token 未过期；任一条件不满足都视为不可续期。
+         */
+        AuthSessionEntity session = authSessionService.findByRefreshToken(oldRefreshToken)
+                .orElseThrow(AuthException::invalidRefreshToken);
+        if (session.getStatus() != AuthSessionStatus.ACTIVE
+                || session.getRefreshExpiresAt() == null
+                || !session.getRefreshExpiresAt().isAfter(refreshedAt)) {
+            throw AuthException.invalidRefreshToken();
+        }
+
+        /*
+         * refresh 期间仍要回读用户状态，避免已禁用账号继续通过旧会话续期。
+         * 对外仍返回统一失败，具体原因只应留在服务端日志或审计中。
+         */
+        UserEntity user = userMapper.findById(session.getUserId())
+                .orElseThrow(AuthException::invalidRefreshToken);
+        if (user.getStatus() != UserStatus.ENABLED) {
+            throw AuthException.invalidRefreshToken();
+        }
+
+        UserInfo userInfo = toUserInfo(user);
+        String newRefreshToken = tokenService.issueRefreshToken();
+        long refreshExpiresIn = tokenService.refreshTokenTtlSeconds();
+        LocalDateTime newRefreshExpiresAt = refreshedAt.plusSeconds(refreshExpiresIn);
+
+        /*
+         * 轮换必须依赖数据库条件更新：旧 token hash、会话版本、状态和过期时间同时命中时才成功。
+         * 这能保证同一个旧 refresh token 在并发或重放场景下最多成功一次。
+         */
+        boolean rotated = authSessionService.rotateRefreshToken(
+                session,
+                oldRefreshToken,
+                newRefreshToken,
+                refreshedAt,
+                newRefreshExpiresAt
+        );
+        if (!rotated) {
+            throw AuthException.invalidRefreshToken();
+        }
+
+        // 轮换成功后才签发新的 access token，确保响应中的 token pair 与服务端会话状态一致。
+        return new TokenPairResponse(
+                tokenService.issueAccessToken(userInfo, session.getSessionId()),
+                newRefreshToken,
+                AUTHORIZATION_SCHEME_BEARER,
+                tokenService.accessTokenTtlSeconds(),
+                refreshExpiresIn,
+                session.getSessionId(),
                 userInfo
         );
     }

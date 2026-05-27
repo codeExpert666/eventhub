@@ -8,9 +8,11 @@ import org.springframework.web.bind.annotation.RestController;
 import com.eventhub.common.api.ApiResponse;
 import com.eventhub.infra.security.support.SecurityUtils;
 import com.eventhub.modules.auth.dto.request.LoginRequest;
+import com.eventhub.modules.auth.dto.request.RefreshTokenRequest;
 import com.eventhub.modules.auth.dto.request.RegisterRequest;
 import com.eventhub.modules.auth.service.AuthService;
 import com.eventhub.modules.auth.vo.LoginResponse;
+import com.eventhub.modules.auth.vo.TokenPairResponse;
 import com.eventhub.modules.auth.vo.UserInfo;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -20,12 +22,12 @@ import lombok.RequiredArgsConstructor;
 
 /**
  * 认证接口控制器。
- * 负责暴露注册、登录和无状态登出入口，具体账号校验、密码加密和 token 签发由服务层完成。
+ * 负责暴露注册、登录、refresh 和无状态登出入口，具体账号校验、密码加密和 token 签发由服务层完成。
  *
  * <p>请求体入参约定：
  * {@code @RequestBody} 负责把 HTTP JSON 请求体反序列化为请求 DTO；
  * {@code @Valid} 负责触发 DTO 字段上的 Jakarta Bean Validation 规则，例如 {@code @NotBlank}、{@code @Email}
- * 和 {@code @Size}。注册和登录属于强输入约束接口，因此不能只依赖 {@code @RequestBody}；否则 JSON 虽然可以被绑定为
+ * 和 {@code @Size}。注册、登录和 refresh 属于强输入约束接口，因此不能只依赖 {@code @RequestBody}；否则 JSON 虽然可以被绑定为
  * Java 对象，但 DTO 上声明的字段校验不会在 Controller 边界自动执行，非法输入可能继续进入服务层。
  */
 @Tag(name = "Auth", description = "注册登录与认证接口")
@@ -58,6 +60,18 @@ public class AuthController {
     @PostMapping("/login")
     public ApiResponse<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
         return ApiResponse.success(authService.login(request));
+    }
+
+    /**
+     * 使用 refresh token 轮换新的 token pair。
+     *
+     * @param request refresh token 请求
+     * @return 新的 access token、refresh token、会话标识与当前用户摘要
+     */
+    @Operation(summary = "刷新 token", description = "使用 refresh token 轮换新的 access token 和 refresh token")
+    @PostMapping("/refresh")
+    public ApiResponse<TokenPairResponse> refresh(@Valid @RequestBody RefreshTokenRequest request) {
+        return ApiResponse.success(authService.refresh(request));
     }
 
     /**

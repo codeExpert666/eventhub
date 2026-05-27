@@ -79,8 +79,12 @@ public class SecurityConfig {
                  */
                 .authorizeHttpRequests(authorize -> {
                     authorize
-                            // 注册和登录必须公开，否则用户无法获得 token。
-                            .requestMatchers(HttpMethod.POST, "/api/v1/auth/register", "/api/v1/auth/login").permitAll()
+                            // 注册、登录和 refresh 必须公开，否则用户无法获得或轮换 token。
+                            .requestMatchers(
+                                    HttpMethod.POST,
+                                    "/api/v1/auth/register",
+                                    "/api/v1/auth/login",
+                                    "/api/v1/auth/refresh").permitAll()
                             // 系统基础接口逐个声明公开方法，避免未来新增写接口被路径通配意外放行。
                             .requestMatchers(HttpMethod.GET, "/api/v1/system/ping").permitAll()
                             .requestMatchers(HttpMethod.POST, "/api/v1/system/echo").permitAll()

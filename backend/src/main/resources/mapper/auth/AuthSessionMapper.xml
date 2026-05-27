@@ -88,6 +88,21 @@
         WHERE refresh_token_hash = #{refreshTokenHash}
     </select>
 
+    <update id="rotateRefreshToken">
+        UPDATE auth_sessions
+        SET refresh_token_hash = #{newRefreshTokenHash},
+            refresh_expires_at = #{refreshExpiresAt},
+            last_refreshed_at = #{refreshedAt},
+            last_seen_at = #{refreshedAt},
+            version = version + 1,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE session_id = #{sessionId}
+          AND refresh_token_hash = #{oldRefreshTokenHash}
+          AND version = #{oldVersion}
+          AND status = 'ACTIVE'
+          AND refresh_expires_at &gt; #{refreshedAt}
+    </update>
+
     <update id="updateLastSeenAt">
         UPDATE auth_sessions
         SET last_seen_at = #{lastSeenAt},

@@ -38,12 +38,36 @@ public interface AuthSessionMapper {
 
     /**
      * 根据 refresh token 哈希查询会话。
-     * 后续 refresh API 会先对客户端提交的明文 token 做哈希，再通过该方法定位服务端会话。
+     * refresh API 会先对客户端提交的明文 token 做哈希，再通过该方法定位服务端会话。
      *
      * @param refreshTokenHash refresh token 哈希
      * @return 会话记录
      */
     Optional<AuthSessionEntity> findByRefreshTokenHash(@Param("refreshTokenHash") String refreshTokenHash);
+
+    /**
+     * 使用旧 refresh token 哈希和旧 version 条件轮换 refresh token。
+     *
+     * <p>
+     * 该 SQL 是 refresh 并发安全的最终防线：同一个旧 token 被并发提交时，第一笔成功更新后会改变
+     * refresh_token_hash 和 version，后续请求即使持有旧会话快照也无法再次命中条件。
+     * </p>
+     *
+     * @param sessionId           会话标识
+     * @param oldRefreshTokenHash 旧 refresh token 哈希
+     * @param oldVersion          refresh 前会话版本
+     * @param newRefreshTokenHash 新 refresh token 哈希
+     * @param refreshedAt         本次 refresh 时间
+     * @param refreshExpiresAt    新 refresh token 过期时间
+     * @return 受影响行数，1 表示轮换成功
+     */
+    int rotateRefreshToken(
+            @Param("sessionId") String sessionId,
+            @Param("oldRefreshTokenHash") String oldRefreshTokenHash,
+            @Param("oldVersion") Integer oldVersion,
+            @Param("newRefreshTokenHash") String newRefreshTokenHash,
+            @Param("refreshedAt") LocalDateTime refreshedAt,
+            @Param("refreshExpiresAt") LocalDateTime refreshExpiresAt);
 
     /**
      * 更新会话最近活跃时间。

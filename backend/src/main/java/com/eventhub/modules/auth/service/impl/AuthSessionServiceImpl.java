@@ -73,6 +73,41 @@ public class AuthSessionServiceImpl implements AuthSessionService {
     }
 
     @Override
+    public Optional<AuthSessionEntity> findByRefreshToken(String refreshToken) {
+        Objects.requireNonNull(refreshToken, "refreshToken must not be null");
+        return authSessionMapper.findByRefreshTokenHash(refreshTokenHasher.hash(refreshToken));
+    }
+
+    @Override
+    @Transactional
+    public boolean rotateRefreshToken(
+            AuthSessionEntity session,
+            String oldRefreshToken,
+            String newRefreshToken,
+            LocalDateTime refreshedAt,
+            LocalDateTime newRefreshExpiresAt) {
+        Objects.requireNonNull(session, "session must not be null");
+        Objects.requireNonNull(session.getSessionId(), "session.sessionId must not be null");
+        Objects.requireNonNull(session.getVersion(), "session.version must not be null");
+        Objects.requireNonNull(refreshedAt, "refreshedAt must not be null");
+        Objects.requireNonNull(newRefreshExpiresAt, "newRefreshExpiresAt must not be null");
+
+        /*
+         * refresh token 轮换的并发安全依赖数据库条件更新：
+         * - oldRefreshTokenHash 确保只有提交当前有效 refresh token 的请求可以更新；
+         * - oldVersion 确保两个请求即使都读到旧会话快照，也只有第一个提交者可以成功。
+         */
+        return authSessionMapper.rotateRefreshToken(
+                session.getSessionId(),
+                refreshTokenHasher.hash(oldRefreshToken),
+                session.getVersion(),
+                refreshTokenHasher.hash(newRefreshToken),
+                refreshedAt,
+                newRefreshExpiresAt
+        ) == 1;
+    }
+
+    @Override
     public Optional<AuthSessionEntity> findBySessionId(String sessionId) {
         Objects.requireNonNull(sessionId, "sessionId must not be null");
         return authSessionMapper.findBySessionId(sessionId);

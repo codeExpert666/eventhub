@@ -10,6 +10,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -209,6 +210,229 @@ class AuthIntegrationTest {
         assertThat(session.getStatus()).isEqualTo(AuthSessionStatus.ACTIVE);
         assertThat(session.getRefreshTokenHash()).isNotEqualTo(refreshToken);
         assertThat(authSessionMapper.findByRefreshTokenHash(refreshTokenHasher.hash(refreshToken))).isPresent();
+    }
+
+    /**
+     * 验证 refresh 成功后返回新的 token pair，并把服务端会话中的 refresh token 哈希替换为新值。
+     */
+    @Test
+    void refreshShouldReturnNewTokenPairAndRotateStoredHash() throws Exception {
+        String username = nextUsername("refreshok");
+        register(username, nextEmail(username));
+        JsonNode loginData = loginAndReturnData(username, "Password123");
+        String oldRefreshToken = loginData.path("refreshToken").asText();
+        String sessionId = loginData.path("sessionId").asText();
+
+        MvcResult result = mockMvc.perform(post("/api/v1/auth/refresh")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(toJson(Map.of("refreshToken", oldRefreshToken))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("COMMON-000"))
+                .andExpect(jsonPath("$.data.accessToken", notNullValue()))
+                .andExpect(jsonPath("$.data.refreshToken", notNullValue()))
+                .andExpect(jsonPath("$.data.authorizationScheme").value("Bearer"))
+                .andExpect(jsonPath("$.data.tokenType").doesNotExist())
+                .andExpect(jsonPath("$.data.expiresIn", greaterThan(0)))
+                .andExpect(jsonPath("$.data.refreshExpiresIn").value(2_592_000))
+                .andExpect(jsonPath("$.data.sessionId").value(sessionId))
+                .andExpect(jsonPath("$.data.user.username").value(username))
+                .andReturn();
+
+        JsonNode refreshData = objectMapper.readTree(result.getResponse().getContentAsString()).path("data");
+        String newAccessToken = refreshData.path("accessToken").asText();
+        String newRefreshToken = refreshData.path("refreshToken").asText();
+        JwtClaims claims = jwtCodec.parseAccessToken(newAccessToken);
+
+        assertThat(newRefreshToken).isNotBlank();
+        assertThat(newRefreshToken).isNotEqualTo(oldRefreshToken);
+        assertThat(claims.sessionId()).isEqualTo(sessionId);
+        assertThat(claims.tokenType()).isEqualTo(JwtClaims.ACCESS_TOKEN_TYPE);
+
+        AuthSessionEntity session = authSessionMapper.findBySessionId(sessionId).orElseThrow();
+        assertThat(session.getRefreshTokenHash()).isEqualTo(refreshTokenHasher.hash(newRefreshToken));
+        assertThat(authSessionMapper.findByRefreshTokenHash(refreshTokenHasher.hash(oldRefreshToken))).isEmpty();
+        assertThat(session.getVersion()).isEqualTo(1);
+        assertThat(session.getLastRefreshedAt()).isNotNull();
+        assertThat(session.getStatus()).isEqualTo(AuthSessionStatus.ACTIVE);
+    }
+
+    /**
+     * 验证新签发的 refresh token 可以继续刷新，形成单条连续轮换链。
+     */
+    @Test
+    void newRefreshTokenShouldRefreshAgain() throws Exception {
+        String username = nextUsername("refreshagain");
+        register(username, nextEmail(username));
+        JsonNode loginData = loginAndReturnData(username, "Password123");
+        String firstRefreshToken = loginData.path("refreshToken").asText();
+        String sessionId = loginData.path("sessionId").asText();
+
+        JsonNode firstRefreshData = refreshAndReturnData(firstRefreshToken);
+        String secondRefreshToken = firstRefreshData.path("refreshToken").asText();
+        JsonNode secondRefreshData = refreshAndReturnData(secondRefreshToken);
+        String thirdRefreshToken = secondRefreshData.path("refreshToken").asText();
+
+        assertThat(secondRefreshToken).isNotEqualTo(firstRefreshToken);
+        assertThat(thirdRefreshToken).isNotEqualTo(secondRefreshToken);
+        AuthSessionEntity session = authSessionMapper.findBySessionId(sessionId).orElseThrow();
+        assertThat(session.getRefreshTokenHash()).isEqualTo(refreshTokenHasher.hash(thirdRefreshToken));
+        assertThat(session.getVersion()).isEqualTo(2);
+    }
+
+    /**
+     * 验证旧 refresh token 在成功轮换后不能再次使用。
+     *
+     * <p>
+     * 当前 opaque token 不保存历史哈希，重放旧 token 时至少返回 401；
+     * 已轮换到新 token 的会话保持 ACTIVE，具体取舍记录在 ADR 中。
+     */
+    @Test
+    void replayedOldRefreshTokenShouldReturnUnauthorizedAndKeepRotatedSessionActive() throws Exception {
+        String username = nextUsername("replay");
+        register(username, nextEmail(username));
+        JsonNode loginData = loginAndReturnData(username, "Password123");
+        String oldRefreshToken = loginData.path("refreshToken").asText();
+        String sessionId = loginData.path("sessionId").asText();
+
+        JsonNode refreshData = refreshAndReturnData(oldRefreshToken);
+        String newRefreshToken = refreshData.path("refreshToken").asText();
+
+        mockMvc.perform(post("/api/v1/auth/refresh")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(toJson(Map.of("refreshToken", oldRefreshToken))))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("AUTH-401"));
+
+        AuthSessionEntity session = authSessionMapper.findBySessionId(sessionId).orElseThrow();
+        assertThat(session.getStatus()).isEqualTo(AuthSessionStatus.ACTIVE);
+        assertThat(session.getRefreshTokenHash()).isEqualTo(refreshTokenHasher.hash(newRefreshToken));
+    }
+
+    /**
+     * 验证两个并发 refresh 请求使用同一个旧 token 时，最多只有一个能完成轮换。
+     */
+    @Test
+    void concurrentRefreshShouldAllowOnlyOneSuccess() throws Exception {
+        String username = nextUsername("refreshrace");
+        register(username, nextEmail(username));
+        JsonNode loginData = loginAndReturnData(username, "Password123");
+        String refreshToken = loginData.path("refreshToken").asText();
+        String sessionId = loginData.path("sessionId").asText();
+        ExecutorService executorService = Executors.newFixedThreadPool(2);
+        CountDownLatch ready = new CountDownLatch(2);
+        CountDownLatch start = new CountDownLatch(1);
+        Callable<Integer> refreshTask = () -> {
+            ready.countDown();
+            if (!start.await(5, TimeUnit.SECONDS)) {
+                throw new IllegalStateException("Timed out waiting to start concurrent refresh");
+            }
+            return refreshAndReturnStatus(refreshToken);
+        };
+
+        try {
+            Future<Integer> firstResult = executorService.submit(refreshTask);
+            Future<Integer> secondResult = executorService.submit(refreshTask);
+            assertThat(ready.await(5, TimeUnit.SECONDS)).isTrue();
+
+            start.countDown();
+
+            assertThat(List.of(
+                    firstResult.get(10, TimeUnit.SECONDS),
+                    secondResult.get(10, TimeUnit.SECONDS))).containsExactlyInAnyOrder(200, 401);
+            assertThat(authSessionMapper.findBySessionId(sessionId).orElseThrow().getVersion()).isEqualTo(1);
+        } finally {
+            executorService.shutdownNow();
+        }
+    }
+
+    /**
+     * 验证 refresh token 过期后不能继续续期。
+     */
+    @Test
+    void expiredRefreshTokenShouldReturnUnauthorized() throws Exception {
+        String username = nextUsername("refreshexpired");
+        register(username, nextEmail(username));
+        JsonNode loginData = loginAndReturnData(username, "Password123");
+        String refreshToken = loginData.path("refreshToken").asText();
+        String sessionId = loginData.path("sessionId").asText();
+        jdbcTemplate.update(
+                "UPDATE auth_sessions SET refresh_expires_at = ? WHERE session_id = ?",
+                Timestamp.valueOf(LocalDateTime.now().minusSeconds(1)),
+                sessionId
+        );
+
+        mockMvc.perform(post("/api/v1/auth/refresh")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(toJson(Map.of("refreshToken", refreshToken))))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("AUTH-401"));
+    }
+
+    /**
+     * 验证用户被禁用后，即使持有未过期 refresh token 也不能继续刷新。
+     */
+    @Test
+    void disabledUserRefreshShouldReturnUnauthorized() throws Exception {
+        String username = nextUsername("refreshdisabled");
+        JsonNode registeredUser = register(username, nextEmail(username));
+        long userId = registeredUser.path("id").asLong();
+        JsonNode loginData = loginAndReturnData(username, "Password123");
+        String refreshToken = loginData.path("refreshToken").asText();
+
+        String adminToken = loginAndExtractToken("admin", "Admin123456");
+        mockMvc.perform(patch("/api/v1/admin/users/{userId}/status", userId)
+                .header(HttpHeaders.AUTHORIZATION, bearer(adminToken))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(toJson(Map.of("status", "DISABLED"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("DISABLED"));
+
+        mockMvc.perform(post("/api/v1/auth/refresh")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(toJson(Map.of("refreshToken", refreshToken))))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("AUTH-401"));
+    }
+
+    /**
+     * 验证被篡改的 refresh token 不能命中服务端会话。
+     */
+    @Test
+    void tamperedRefreshTokenShouldReturnUnauthorized() throws Exception {
+        String username = nextUsername("refreshtampered");
+        register(username, nextEmail(username));
+        JsonNode loginData = loginAndReturnData(username, "Password123");
+        String refreshToken = loginData.path("refreshToken").asText();
+
+        mockMvc.perform(post("/api/v1/auth/refresh")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(toJson(Map.of("refreshToken", tamperToken(refreshToken)))))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("AUTH-401"));
+    }
+
+    /**
+     * 验证已吊销会话不能继续通过 refresh token 续期。
+     */
+    @Test
+    void revokedSessionRefreshShouldReturnUnauthorized() throws Exception {
+        String username = nextUsername("refreshrevoked");
+        register(username, nextEmail(username));
+        JsonNode loginData = loginAndReturnData(username, "Password123");
+        String refreshToken = loginData.path("refreshToken").asText();
+        String sessionId = loginData.path("sessionId").asText();
+
+        assertThat(authSessionMapper.revokeBySessionId(
+                sessionId,
+                LocalDateTime.now(),
+                "TEST_REVOKE"
+        )).isEqualTo(1);
+
+        mockMvc.perform(post("/api/v1/auth/refresh")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(toJson(Map.of("refreshToken", refreshToken))))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("AUTH-401"));
     }
 
     /**
@@ -636,6 +860,25 @@ class AuthIntegrationTest {
                 .andReturn();
         return objectMapper.readTree(result.getResponse().getContentAsString())
                 .path("data");
+    }
+
+    private JsonNode refreshAndReturnData(String refreshToken) throws Exception {
+        MvcResult result = mockMvc.perform(post("/api/v1/auth/refresh")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(toJson(Map.of("refreshToken", refreshToken))))
+                .andExpect(status().isOk())
+                .andReturn();
+        return objectMapper.readTree(result.getResponse().getContentAsString())
+                .path("data");
+    }
+
+    private int refreshAndReturnStatus(String refreshToken) throws Exception {
+        return mockMvc.perform(post("/api/v1/auth/refresh")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(toJson(Map.of("refreshToken", refreshToken))))
+                .andReturn()
+                .getResponse()
+                .getStatus();
     }
 
     private long countAuthSessions() {

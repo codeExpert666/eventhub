@@ -9,8 +9,8 @@ import com.eventhub.modules.auth.entity.AuthSessionEntity;
  * 认证会话应用服务接口。
  *
  * <p>
- * 当前登录成功路径会创建 ACTIVE 会话；refresh/logout 会在后续任务中继续接入。
- * 这样可以先完成双 token 登录闭环，再分阶段引入 token 轮换与服务端吊销流程。
+ * 当前登录成功路径会创建 ACTIVE 会话，refresh 路径会基于旧 token hash 和 version 轮换凭证。
+ * logout 服务端吊销和设备会话列表可在该服务边界内继续扩展。
  * </p>
  */
 public interface AuthSessionService {
@@ -31,6 +31,40 @@ public interface AuthSessionService {
             String refreshToken,
             LocalDateTime issuedAt,
             LocalDateTime refreshExpiresAt);
+
+    /**
+     * 根据 refresh token 明文查询会话。
+     *
+     * <p>
+     * 调用方只提交明文 token，服务内部负责计算哈希后查询，避免上层服务直接处理落库哈希格式。
+     * </p>
+     *
+     * @param refreshToken refresh token 明文
+     * @return 命中的会话记录
+     */
+    Optional<AuthSessionEntity> findByRefreshToken(String refreshToken);
+
+    /**
+     * 轮换单个会话的 refresh token。
+     *
+     * <p>
+     * 实现必须使用旧 refresh token hash、旧 version、会话状态和过期时间做条件更新，
+     * 以保证同一个旧 token 并发提交时最多只有一个请求成功。
+     * </p>
+     *
+     * @param session                 refresh 前读到的会话快照
+     * @param oldRefreshToken         旧 refresh token 明文
+     * @param newRefreshToken         新 refresh token 明文
+     * @param refreshedAt             本次 refresh 时间
+     * @param newRefreshExpiresAt     新 refresh token 过期时间
+     * @return true 表示轮换成功
+     */
+    boolean rotateRefreshToken(
+            AuthSessionEntity session,
+            String oldRefreshToken,
+            String newRefreshToken,
+            LocalDateTime refreshedAt,
+            LocalDateTime newRefreshExpiresAt);
 
     /**
      * 根据会话标识查询会话。
