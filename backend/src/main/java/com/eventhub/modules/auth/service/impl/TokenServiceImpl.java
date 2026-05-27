@@ -1,18 +1,16 @@
 package com.eventhub.modules.auth.service.impl;
 
-import java.security.SecureRandom;
-import java.util.Base64;
-import java.util.UUID;
-
-import org.springframework.stereotype.Service;
-
 import com.eventhub.infra.security.config.AuthTokenProperties;
 import com.eventhub.infra.security.jwt.JwtClaims;
 import com.eventhub.infra.security.jwt.JwtCodec;
 import com.eventhub.modules.auth.service.TokenService;
 import com.eventhub.modules.auth.vo.UserInfo;
-
 import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+
+import java.security.SecureRandom;
+import java.util.Base64;
+import java.util.UUID;
 
 /**
  * token 业务语义服务实现。
@@ -45,7 +43,7 @@ public class TokenServiceImpl implements TokenService {
 
     @Override
     public String issueRefreshToken() {
-        // refresh token 是 opaque token：客户端只负责保存和提交，不能从 token 本身解析出用户信息。
+        // refresh token 是 opaque token（本质就是随机字符串）：客户端只负责保存和提交，不能从 token 本身解析出用户信息。
         // 这里直接生成 32 字节随机数，重点是保证足够高的随机性，降低被猜中的概率。
         byte[] randomBytes = new byte[REFRESH_TOKEN_BYTE_LENGTH];
 

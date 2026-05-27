@@ -19,6 +19,8 @@ CREATE TABLE auth_sessions (
 
     -- refresh token 哈希。
     -- 只保存哈希值，不保存 refresh token 明文；后续 refresh 时用客户端提交的 token 重新哈希后匹配。
+    -- 该值必须唯一，确保一个 refresh token 凭证只能定位到一个服务端会话。
+    -- 不唯一会命中多条 session，认证语义不清楚。
     refresh_token_hash VARCHAR(128) NOT NULL,
 
     -- 会话状态。
