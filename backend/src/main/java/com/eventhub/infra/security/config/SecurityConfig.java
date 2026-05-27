@@ -1,5 +1,6 @@
 package com.eventhub.infra.security.config;
 
+import com.eventhub.infra.security.jwt.JwtAuthenticationFilter;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -15,8 +16,6 @@ import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-
-import com.eventhub.infra.security.jwt.JwtAuthenticationFilter;
 
 /**
  * Spring Security 全局配置。
@@ -75,17 +74,20 @@ public class SecurityConfig {
                 .exceptionHandling(exception -> exception
                         .authenticationEntryPoint(authenticationEntryPoint)
                         .accessDeniedHandler(accessDeniedHandler))
+                /*
+                 * 授权规则按声明顺序从上到下匹配，命中第一条规则后即停止继续匹配。
+                 */
                 .authorizeHttpRequests(authorize -> {
                     authorize
-                        // 注册和登录必须公开，否则用户无法获得 token。
-                        .requestMatchers(HttpMethod.POST, "/api/v1/auth/register", "/api/v1/auth/login").permitAll()
-                        // 系统基础接口逐个声明公开方法，避免未来新增写接口被路径通配意外放行。
-                        .requestMatchers(HttpMethod.GET, "/api/v1/system/ping").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/v1/system/echo").permitAll()
-                        // 基础设施探活和应用信息端点。
-                        .requestMatchers(HttpMethod.GET, "/actuator/health", "/actuator/info").permitAll()
-                        .requestMatchers(HttpMethod.HEAD, "/actuator/health", "/actuator/info").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/favicon.ico").permitAll();
+                            // 注册和登录必须公开，否则用户无法获得 token。
+                            .requestMatchers(HttpMethod.POST, "/api/v1/auth/register", "/api/v1/auth/login").permitAll()
+                            // 系统基础接口逐个声明公开方法，避免未来新增写接口被路径通配意外放行。
+                            .requestMatchers(HttpMethod.GET, "/api/v1/system/ping").permitAll()
+                            .requestMatchers(HttpMethod.POST, "/api/v1/system/echo").permitAll()
+                            // 基础设施探活和应用信息端点。
+                            .requestMatchers(HttpMethod.GET, "/actuator/health", "/actuator/info").permitAll()
+                            .requestMatchers(HttpMethod.HEAD, "/actuator/health", "/actuator/info").permitAll()
+                            .requestMatchers(HttpMethod.GET, "/favicon.ico").permitAll();
 
                     /*
                      * OpenAPI / Swagger UI 只在 springdoc 对应能力启用时公开放行。
@@ -105,6 +107,10 @@ public class SecurityConfig {
                             /*
                              * 管理端接口采用 URL 规则和 @PreAuthorize 双层保护。
                              * hasRole("ADMIN") 会匹配 ROLE_ADMIN，因此角色加载时会统一补 ROLE_ 前缀。
+                             *
+                             * 路径通配符说明：
+                             * - * 匹配且必须匹配一层路径片段，可放在路径末尾，例如 /users/*；
+                             * - ** 匹配零层或多层后续路径，建议只放在末尾作为前缀兜底，例如 /admin/**。
                              */
                             .requestMatchers(HttpMethod.GET, "/api/v1/admin/users").hasRole("ADMIN")
                             .requestMatchers(HttpMethod.PATCH, "/api/v1/admin/users/*/status").hasRole("ADMIN")
@@ -112,22 +118,32 @@ public class SecurityConfig {
                             .anyRequest().authenticated();
                 })
                 /*
-                 * JWT Filter 必须位于 UsernamePasswordAuthenticationFilter 之前，
-                 * 这样后续授权规则才能看到已经写入 SecurityContext 的当前用户。
+                 * UsernamePasswordAuthenticationFilter 是 Spring Security 表单登录的标准过滤器位置。
+                 * 当前项目未启用 formLogin，它在这里仅作为顺序锚点：JWT Filter 先解析 Bearer token
+                 * 并写入 SecurityContext，后续授权规则才能识别当前用户。
                  */
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }
 
     /**
-     * 显式关闭 Spring Boot 默认内存用户。
+     * 阻止 Spring Boot 创建默认内存用户。
      *
      * <p>
-     * 本项目认证入口是自定义注册/登录接口与 JWT Filter，不使用默认表单登录或 Basic 用户。
-     * 如果某处误用了默认 {@link UserDetailsService}，这里会明确失败，避免悄悄走到内存用户分支。
+     * {@link UserDetailsService} 通常用于表单登录、HTTP Basic 或 DaoAuthenticationProvider：
+     * Spring Security 会通过它按用户名加载用户、密码哈希和权限信息。本项目不走这条认证链，
+     * 而是由自定义登录接口校验密码并签发 JWT，后续请求再由 {@link JwtAuthenticationFilter}
+     * 根据 Bearer token 建立 {@code SecurityContext}。
      * </p>
      *
-     * @return 不提供默认用户的 UserDetailsService
+     * <p>
+     * Spring Boot 不会扫描项目里是否存在登录接口或用户表；它只会根据 Spring 容器中是否已有
+     * {@link UserDetailsService}、AuthenticationProvider、AuthenticationManager 等认证相关 Bean
+     * 来决定是否自动创建默认内存用户。因此这里声明一个不会返回用户的占位实现：
+     * 既让默认内存用户自动配置失效，也能在未来有人误接入默认认证链时快速失败。
+     * </p>
+     *
+     * @return 始终抛出 {@link UsernameNotFoundException} 的占位 UserDetailsService
      */
     @Bean
     public UserDetailsService userDetailsService() {
