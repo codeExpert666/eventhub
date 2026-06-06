@@ -10,3 +10,9 @@ backend/.classpath
 backend/.factorypath
 backend/.project
 backend/.settings/
+
+# codegraph
+.codegraph/
+
+# local Codex state
+.codex/
