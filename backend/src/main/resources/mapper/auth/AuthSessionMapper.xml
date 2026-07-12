@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.eventhub.modules.auth.mapper.AuthSessionMapper">
+
+    <!--
+        auth_sessions 表到 AuthSessionEntity 的显式属性映射。
+        refresh token 明文不属于实体字段，落库和查询都只能处理 refresh_token_hash。
+        status 使用 MyBatis 默认枚举映射，数据库字符串必须与 AuthSessionStatus 枚举常量名一致。
+    -->
+    <resultMap id="AuthSessionEntityResultMap" type="com.eventhub.modules.auth.entity.AuthSessionEntity">
+        <id property="id" column="id" javaType="java.lang.Long"/>
+        <result property="sessionId" column="session_id" javaType="java.lang.String"/>
+        <result property="userId" column="user_id" javaType="java.lang.Long"/>
+        <result property="refreshTokenHash" column="refresh_token_hash" javaType="java.lang.String"/>
+        <result property="status" column="status" javaType="com.eventhub.modules.auth.enums.AuthSessionStatus"/>
+        <result property="issuedAt" column="issued_at" javaType="java.time.LocalDateTime"/>
+        <result property="refreshExpiresAt" column="refresh_expires_at" javaType="java.time.LocalDateTime"/>
+        <result property="lastRefreshedAt" column="last_refreshed_at" javaType="java.time.LocalDateTime"/>
+        <result property="lastSeenAt" column="last_seen_at" javaType="java.time.LocalDateTime"/>
+        <result property="revokedAt" column="revoked_at" javaType="java.time.LocalDateTime"/>
+        <result property="revokeReason" column="revoke_reason" javaType="java.lang.String"/>
+        <result property="clientIpHash" column="client_ip_hash" javaType="java.lang.String"/>
+        <result property="userAgentHash" column="user_agent_hash" javaType="java.lang.String"/>
+        <result property="userAgentSummary" column="user_agent_summary" javaType="java.lang.String"/>
+        <result property="version" column="version" javaType="java.lang.Integer"/>
+        <result property="createdAt" column="created_at" javaType="java.time.LocalDateTime"/>
+        <result property="updatedAt" column="updated_at" javaType="java.time.LocalDateTime"/>
+    </resultMap>
+
+    <sql id="AuthSessionColumns">
+        id, session_id, user_id, refresh_token_hash, status, issued_at, refresh_expires_at,
+        last_refreshed_at, last_seen_at, revoked_at, revoke_reason, client_ip_hash,
+        user_agent_hash, user_agent_summary, version, created_at, updated_at
+    </sql>
+
+    <insert id="insert"
+            parameterType="com.eventhub.modules.auth.entity.AuthSessionEntity"
+            useGeneratedKeys="true"
+            keyProperty="id"
+            keyColumn="id">
+        INSERT INTO auth_sessions (
+            session_id,
+            user_id,
+            refresh_token_hash,
+            status,
+            issued_at,
+            refresh_expires_at,
+            last_refreshed_at,
+            last_seen_at,
+            revoked_at,
+            revoke_reason,
+            client_ip_hash,
+            user_agent_hash,
+            user_agent_summary,
+            version
+        )
+        VALUES (
+            #{sessionId},
+            #{userId},
+            #{refreshTokenHash},
+            #{status},
+            #{issuedAt},
+            #{refreshExpiresAt},
+            #{lastRefreshedAt},
+            #{lastSeenAt},
+            #{revokedAt},
+            #{revokeReason},
+            #{clientIpHash},
+            #{userAgentHash},
+            #{userAgentSummary},
+            #{version}
+        )
+    </insert>
+
+    <select id="findBySessionId" resultMap="AuthSessionEntityResultMap">
+        SELECT
+        <include refid="AuthSessionColumns"/>
+        FROM auth_sessions
+        WHERE session_id = #{sessionId}
+    </select>
+
+    <select id="findByRefreshTokenHash" resultMap="AuthSessionEntityResultMap">
+        SELECT
+        <include refid="AuthSessionColumns"/>
+        FROM auth_sessions
+        WHERE refresh_token_hash = #{refreshTokenHash}
+    </select>
+
+    <update id="rotateRefreshToken">
+        UPDATE auth_sessions
+        SET refresh_token_hash = #{newRefreshTokenHash},
+            refresh_expires_at = #{refreshExpiresAt},
+            last_refreshed_at = #{refreshedAt},
+            last_seen_at = #{refreshedAt},
+            version = version + 1,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE session_id = #{sessionId}
+          AND refresh_token_hash = #{oldRefreshTokenHash}
+          AND version = #{oldVersion}
+          AND status = 'ACTIVE'
+          AND refresh_expires_at &gt; #{refreshedAt}
+    </update>
+
+    <update id="updateLastSeenAt">
+        UPDATE auth_sessions
+        SET last_seen_at = #{lastSeenAt},
+            updated_at = CURRENT_TIMESTAMP
+        WHERE session_id = #{sessionId}
+          AND status = 'ACTIVE'
+    </update>
+
+    <update id="revokeBySessionId">
+        UPDATE auth_sessions
+        SET status = 'REVOKED',
+            revoked_at = #{revokedAt},
+            revoke_reason = #{revokeReason},
+            version = version + 1,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE session_id = #{sessionId}
+          AND status = 'ACTIVE'
+    </update>
+
+    <update id="updateStatus">
+        UPDATE auth_sessions
+        SET status = #{status},
+            updated_at = CURRENT_TIMESTAMP
+        WHERE session_id = #{sessionId}
+    </update>
+</mapper>

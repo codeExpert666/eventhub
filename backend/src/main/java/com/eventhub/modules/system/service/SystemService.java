@@ -1,8 +1,8 @@
 package com.eventhub.modules.system.service;
 
 import com.eventhub.modules.system.dto.request.EchoRequest;
-import com.eventhub.modules.system.vo.EchoInfo;
-import com.eventhub.modules.system.vo.PingInfo;
+import com.eventhub.modules.system.dto.response.EchoResponse;
+import com.eventhub.modules.system.dto.response.PingResponse;
 import java.time.OffsetDateTime;
 import java.util.Arrays;
 import java.util.List;
@@ -17,18 +17,21 @@ import org.springframework.stereotype.Service;
  * 这样可以让 Controller 只关注 HTTP 协议、参数绑定和统一响应包装，
  * 而把“返回什么业务数据”这一层职责收敛在 Service 中。
  *
- * <p>这里当前没有额外声明 {@code SystemService} 接口，而是直接使用具体类，
+ * <p>
+ * 这里当前没有额外声明 {@code SystemService} 接口，而是直接使用具体类，
  * 是一个有意的简化选择，而不是遗漏：
  * 第一，当前仓库还处在单体后端基础阶段，这个服务只有唯一实现，也没有多数据源、多提供方切换等场景；
  * 第二，这里的方法非常简单，先抽接口只会增加一个同名接口和实现类的样板代码，却没有带来实际解耦收益；
  * 第三，Spring 依赖注入并不要求每个 Service 都必须先有接口，按具体类注入在这种单实现场景下完全成立。
  *
- * <p>后续如果这里真的出现以下需求，再补接口会更合适：
+ * <p>
+ * 后续如果这里真的出现以下需求，再补接口会更合适：
  * 例如需要多套实现并按环境切换、需要为应用层与领域层建立明确端口边界、
  * 或者某个能力要被抽象成可替换的协作契约。也就是说，接口更适合在“确实存在抽象点”时引入，
  * 而不是在项目刚起步、只有单一实现时为了形式统一提前铺开。
  *
- * <p>{@link RequiredArgsConstructor} 会为 {@code final} 依赖字段生成构造器。
+ * <p>
+ * {@link RequiredArgsConstructor} 会为 {@code final} 依赖字段生成构造器。
  * 这里仍然坚持构造器注入，避免字段注入带来的不可测试和依赖不透明问题，只是减少手写样板代码。
  */
 @Service
@@ -49,12 +52,11 @@ public class SystemService {
      *
      * @return 系统探活信息
      */
-    public PingInfo ping() {
-        return new PingInfo(
+    public PingResponse ping() {
+        return new PingResponse(
                 environment.getProperty("spring.application.name", "eventhub-backend"),
                 resolveActiveProfiles(),
-                OffsetDateTime.now()
-        );
+                OffsetDateTime.now());
     }
 
     /**
@@ -65,8 +67,8 @@ public class SystemService {
      * @param request 回显请求参数
      * @return 回显结果对象
      */
-    public EchoInfo echo(EchoRequest request) {
-        return new EchoInfo(request.message(), request.tag(), OffsetDateTime.now());
+    public EchoResponse echo(EchoRequest request) {
+        return new EchoResponse(request.message(), request.tag(), OffsetDateTime.now());
     }
 
     /**

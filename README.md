@@ -33,8 +33,8 @@ backend/
   │   └── modules/system
   │       ├── controller
   │       ├── dto/request
-  │       ├── service
-  │       └── vo
+  │       ├── dto/response
+  │       └── service
   ├── src/main/resources
   │   ├── application*.yml
   │   ├── db/migration
@@ -52,7 +52,7 @@ docker-compose.yml
 
 前置条件：
 
-- Java 17
+- Java 21
 - Maven 3.9+
 - Docker / Docker Compose
 
@@ -66,8 +66,8 @@ docker compose up -d
 
 2. 访问地址
 
-- Swagger UI: `http://localhost:8080/swagger-ui/index.html`
-- OpenAPI JSON: `http://localhost:8080/v3/api-docs`
+- Swagger UI（dev/test 联调入口，prod 默认关闭）: `http://localhost:8080/swagger-ui/index.html`
+- OpenAPI JSON（dev/test 联调入口，prod 默认关闭）: `http://localhost:8080/v3/api-docs`
 - 健康检查: `http://localhost:8080/actuator/health`
 - 应用信息: `http://localhost:8080/actuator/info`
 - 系统探活: `http://localhost:8080/api/v1/system/ping`
@@ -85,7 +85,7 @@ cd backend
 mvn spring-boot:run -Pdev
 ```
 
-`prod` profile 不再提供数据库和 Redis 的本地默认值，启动前必须显式注入 `DB_URL`、`DB_USERNAME`、`DB_PASSWORD`、`REDIS_HOST` 等环境变量，避免生产环境误用开发配置。
+`prod` profile 不再提供数据库、Redis 和 JWT 密钥的本地默认值，启动前必须显式注入 `DB_URL`、`DB_USERNAME`、`DB_PASSWORD`、`REDIS_HOST`、`EVENTHUB_JWT_SECRET` 等环境变量，避免生产环境误用开发配置。生产环境同时默认关闭 Swagger UI 与 OpenAPI JSON，避免对外暴露接口契约。
 
 常用 Maven profile：
 

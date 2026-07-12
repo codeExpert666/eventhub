@@ -52,12 +52,14 @@ PATCH /api/v1/admin/users/{userId}/status
 ```text
 access_token 有效期：30 分钟
 JWT claims：
-  sub: userId
-  username
-  roles
+  sub: subjectId（当前对应 users.id）
   iat
   exp
+  iss
 ```
+
+`username` / `principalName` / 角色权限不写入 access token 作为最终授权依据。请求进入 JWT Filter 后，
+通过 `AuthenticatedSubjectLoader` 查询最新用户状态与角色权限，避免用户禁用或角色变更后旧 token 继续沿用过期权限快照。
 
 进阶可补 refresh token：
 
@@ -93,8 +95,9 @@ ADMIN：管理活动、场次、票种、查看操作日志
 users / roles / user_roles 表
 AuthController
 UserController
-JwtTokenService
-SecurityConfig
+common.security.AuthenticatedSubject / AuthenticatedSubjectLoader
+infra.jwt.JwtTokenProvider
+infra.security.SecurityConfiguration / JwtAuthenticationFilter
 PasswordEncoder 配置
 管理员种子数据 migration
 相关设计、实现、ADR文档
@@ -103,7 +106,7 @@ PasswordEncoder 配置
 以下是每个模块内部的标准分层，对于 auth 模块来说，不涉及的可直接舍弃：
 
 ```text
-modules/system
+modules/auth
 ├── controller
 ├── service
 │   └── impl（简单 service 可不写接口）
@@ -112,8 +115,7 @@ modules/system
 ├── entity
 ├── dto
 │   ├── request
-│   └── query
-├── vo
+│   └── response
 ├── converter
 ├── enums
 └── exception
@@ -132,4 +134,4 @@ modules/system
 
 ## 面试表达
 
-> 使用 Spring Security 与 JWT 实现无状态认证，通过角色模型实现 USER / ADMIN 权限边界，并统一处理 401、403 等认证授权异常。
+> 使用 Spring Security 与最小 JWT 实现无状态认证，通过认证主体加载接口实时查询用户状态与角色权限，实现 USER / ADMIN 权限边界，并统一处理 401、403 等认证授权异常。

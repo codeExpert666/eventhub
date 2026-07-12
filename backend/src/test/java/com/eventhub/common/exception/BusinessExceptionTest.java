@@ -4,8 +4,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import com.eventhub.common.api.ErrorCode;
 import org.junit.jupiter.api.Test;
+
+import com.eventhub.common.api.ErrorCode;
 
 /**
  * BusinessException 行为测试。
@@ -90,8 +91,7 @@ class BusinessExceptionTest {
         // 双参数构造方法也必须在构造阶段尽早失败，避免生成一个缺少错误码的业务异常。
         NullPointerException exception = assertThrows(
                 NullPointerException.class,
-                () -> new BusinessException(null, "自定义错误信息")
-        );
+                () -> new BusinessException(null, "自定义错误信息"));
 
         // 两个构造方法对空 errorCode 使用同一条保护性错误文案，保持异常契约一致。
         assertEquals("errorCode must not be null", exception.getMessage());

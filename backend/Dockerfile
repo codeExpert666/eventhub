@@ -15,17 +15,16 @@
 # - 职责更清晰：构建依赖只出现在 build 阶段，运行依赖只出现在 runtime 阶段。
 
 # FROM 用于声明当前阶段基于哪个基础镜像。
-# 这里选择 maven:3.9.15-eclipse-temurin-17-noble 作为构建阶段基础镜像，原因是：
-# - maven:3.9.15：与当前本机 Homebrew Maven 版本保持一致，减少本地构建与容器构建的工具链差异；
-# - eclipse-temurin-17：镜像内使用 Eclipse Temurin 发行版的 JDK 17；
-# - noble：显式固定 Ubuntu Noble 变体，避免无操作系统后缀的标签在未来切换底层发行版时带来隐性差异；
-# - JDK 17：与本项目 Spring Boot 后端当前使用的 Java 版本保持一致；
+# 这里选择 maven:3.9.9-eclipse-temurin-21 作为构建阶段基础镜像，原因是：
+# - maven:3.9.9：镜像内已经预装 Maven，适合执行 mvn package 等构建命令；
+# - eclipse-temurin-21：镜像内使用 Eclipse Temurin 发行版的 JDK 21；
+# - JDK 21：与本项目 Spring Boot 后端当前使用的 Java 版本保持一致；
 # - AS build：给这个阶段命名为 build，后续可以通过 COPY --from=build
 #   从该阶段复制构建产物到最终运行镜像。
 #
 # 注意：构建阶段必须使用 JDK，因为编译 Java 代码需要 javac 等开发工具；
 # 仅有 JRE 的镜像只能运行 Java 程序，不能完整承担编译职责。
-FROM maven:3.9.15-eclipse-temurin-17-noble AS build
+FROM maven:3.9.9-eclipse-temurin-21 AS build
 
 
 # WORKDIR 用于设置后续指令的工作目录。
@@ -73,12 +72,12 @@ COPY src ./src
 RUN mvn -q -DskipTests package
 
 # 第二个 FROM 开启一个新的阶段，也就是最终运行阶段。
-# 这里选择 eclipse-temurin:17-jre-noble，而不是继续使用 Maven/JDK 镜像，原因是：
+# 这里选择 eclipse-temurin:21-jre，而不是继续使用 Maven/JDK 镜像，原因是：
 # - 运行 Spring Boot Jar 只需要 Java 运行环境，通常不需要 Maven 和 javac；
 # - JRE 镜像体积通常小于 JDK/Maven 镜像；
 # - 运行镜像越精简，越容易降低安全风险和部署成本；
-# - 仍然使用 Temurin 17 和 Ubuntu Noble，可以和构建阶段的 Java 主版本及基础发行版保持一致。
-FROM eclipse-temurin:17-jre-noble
+# - 仍然使用 Temurin 21，可以和构建阶段的 Java 主版本保持一致，避免编译与运行版本不一致。
+FROM eclipse-temurin:21-jre
 
 # 设置最终容器内的应用工作目录。
 # 后续会把打包好的 app.jar 放到 /app/app.jar，并在这个目录下启动应用。

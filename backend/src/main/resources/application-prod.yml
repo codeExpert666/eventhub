@@ -81,3 +81,19 @@ management:
       # 生产排障应优先依赖受控的日志、监控与内部运维接口。
       show-details: never
       show-components: never
+
+springdoc:
+  api-docs:
+    # 生产环境默认关闭 OpenAPI JSON，避免对外暴露接口路径、请求响应模型和枚举契约。
+    enabled: false
+  swagger-ui:
+    # 生产环境默认关闭 Swagger UI，开发联调请使用 dev/test profile 或受控的非生产环境。
+    enabled: false
+
+eventhub:
+  security:
+    auth-token:
+      access-token:
+        # 生产 access token 签名密钥，必须由部署环境显式提供。
+        # 不设置默认值是为了让缺失密钥的生产启动快速失败，避免所有实例共享仓库内置弱密钥。
+        signing-secret: ${EVENTHUB_ACCESS_TOKEN_SIGNING_SECRET}

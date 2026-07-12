@@ -21,6 +21,10 @@ spring:
       # 如果保持默认时间戳格式，前端往往还需要额外约定“秒 / 毫秒单位”以及时区解释方式，
       # 对学习型项目来说可读性和调试体验都不如直接输出标准时间字符串。
       write-dates-as-timestamps: false
+    deserialization:
+      # 禁止使用数字 ordinal 反序列化枚举，例如 {"status":0} 不应被解释为第一个 UserStatus。
+      # HTTP API 应暴露稳定、可读的字符串枚举名，避免 Java 枚举声明顺序变成隐式外部契约。
+      fail-on-numbers-for-enums: true
   datasource:
     hikari:
       # HikariCP 是 Spring Boot 默认集成的高性能 JDBC 连接池实现。
@@ -61,6 +65,18 @@ spring:
     # 并结合数据库中的 flyway_schema_history 记录判断哪些脚本需要执行。
     locations: classpath:db/migration
 
+mybatis:
+  # MyBatis XML Mapper 文件位置。
+  # classpath*:mapper/**/*.xml 表示从运行时 classpath 中扫描 mapper 目录及其子目录下的 XML，
+  # 这样每个业务模块都可以按 resources/mapper/<module>/*.xml 组织自己的 SQL 映射文件。
+  mapper-locations: classpath*:mapper/**/*.xml
+  configuration:
+    # 开启下划线字段到驼峰属性的自动映射。
+    # 例如数据库列 password_hash 可以映射到 Java 属性 passwordHash。
+    # 当前核心结果映射仍会使用显式 resultMap，便于学习阶段看清每个字段如何进入持久化对象；
+    # 这个全局配置主要服务后续简单查询和新模块的默认映射习惯。
+    map-underscore-to-camel-case: true
+
 server:
   # 后端服务默认端口。
   # 如部署环境需要不同端口，可通过外部配置覆盖。
@@ -99,9 +115,34 @@ management:
       show-components: always
 
 springdoc:
+  api-docs:
+    # 非生产环境默认生成 OpenAPI JSON，便于自动化测试、接口联调和学习演示。
+    # 生产环境会在 application-prod.yml 中关闭，避免默认暴露完整接口契约。
+    enabled: true
   swagger-ui:
+    # 非生产环境默认启用 Swagger UI，作为浏览器侧接口调试入口。
+    # 生产环境会在 application-prod.yml 中关闭，避免暴露交互式接口文档页面。
+    enabled: true
     # 固定 Swagger UI 访问路径，便于 README、联调文档和浏览器访问入口保持一致。
     path: /swagger-ui.html
+
+eventhub:
+  security:
+    auth-token:
+      # 认证令牌签发方标识。
+      # 当前写入并校验 JWT access token 的 issuer，避免误接受其他系统签发的结构相似 token。
+      issuer: eventhub-backend
+      access-token:
+        # access token 有效期。
+        # 30 分钟能兼顾演示便利性与泄露后的风险窗口；后续可按安全要求进一步缩短。
+        ttl: 30m
+        # 签名密钥不在公共配置中提供默认值，避免生产环境误用仓库内置密钥。
+        # dev/test profile 会提供本地默认值；prod profile 必须通过环境变量显式注入。
+      refresh-token:
+        # opaque refresh token 有效期。
+        # 当前登录成功会创建服务端认证会话并返回 opaque refresh token；30 天便于学习演示和本地联调。
+        # 后续如果接入更严格的安全策略，可以按环境覆盖为更短有效期，并配合 refresh token 轮换。
+        ttl: 30d
 
 logging:
   level:

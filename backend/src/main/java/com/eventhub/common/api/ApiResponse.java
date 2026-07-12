@@ -63,7 +63,7 @@ public class ApiResponse<T> {
      * 构造一个携带业务数据的成功响应。
      *
      * @param data 成功响应携带的业务数据
-     * @param <T> 业务数据类型
+     * @param <T>  业务数据类型
      * @return 统一成功响应
      */
     public static <T> ApiResponse<T> success(T data) {
@@ -82,9 +82,9 @@ public class ApiResponse<T> {
      * 组装成统一返回结构，避免控制器和异常处理逻辑重复拼装响应字段。
      *
      * @param errorCode 失败场景对应的应用层错误码
-     * @param message 返回给调用方的错误提示信息
-     * @param data 附加错误数据，例如字段级校验明细；如果没有额外信息可传入 {@code null}
-     * @param <T> 附加错误数据类型
+     * @param message   返回给调用方的错误提示信息
+     * @param data      附加错误数据，例如字段级校验明细；如果没有额外信息可传入 {@code null}
+     * @param <T>       附加错误数据类型
      * @return 统一失败响应
      */
     public static <T> ApiResponse<T> failure(ErrorCode errorCode, String message, T data) {

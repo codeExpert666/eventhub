@@ -1,13 +1,15 @@
 package com.eventhub.common.api;
 
-import lombok.Getter;
 import org.springframework.http.HttpStatus;
+
+import lombok.Getter;
 
 /**
  * 统一错误码定义。
  * 当前只保留基础工程所需的最小集合，后续业务模块可以在此基础上继续扩展。
  *
- * <p>{@link Getter} 会为下方三个只读字段生成标准 getter，
+ * <p>
+ * {@link Getter} 会为下方三个只读字段生成标准 getter，
  * 例如 {@code getCode()}、{@code getHttpStatus()} 和 {@code getDefaultMessage()}。
  * 这些访问方法仍然是对外契约的一部分，只是由 Lombok 在编译期生成，避免枚举字段增加后重复维护样板方法。
  */
@@ -37,6 +39,24 @@ public enum ErrorCode {
      * 对应 HTTP 404，常见于访问未定义接口或缺失静态资源，例如浏览器自动请求的 favicon.ico。
      */
     NOT_FOUND(HttpStatus.NOT_FOUND, "COMMON-404", "资源不存在"),
+
+    /**
+     * 认证失败。
+     * 对应 HTTP 401，表示调用方没有提供有效登录凭证，或者凭证已经过期、签名非法。
+     */
+    AUTHENTICATION_FAILED(HttpStatus.UNAUTHORIZED, "AUTH-401", "认证失败"),
+
+    /**
+     * 权限不足。
+     * 对应 HTTP 403，表示调用方身份已经确认，但不具备访问目标资源所需的角色或权限。
+     */
+    ACCESS_DENIED(HttpStatus.FORBIDDEN, "AUTH-403", "权限不足"),
+
+    /**
+     * 账号唯一性冲突。
+     * 对应 HTTP 409，当前主要用于用户名或邮箱已经被注册的场景。
+     */
+    AUTH_CONFLICT(HttpStatus.CONFLICT, "AUTH-409", "账号信息已存在"),
 
     /**
      * 服务端发生未预期异常，调用方通常无法自行恢复。

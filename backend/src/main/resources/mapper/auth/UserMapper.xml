@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.eventhub.modules.auth.mapper.UserMapper">
+
+    <!--
+        users 表到 UserEntity 普通类的显式属性映射。
+        虽然 application.yml 已开启下划线转驼峰，但这里仍使用 resultMap：
+        1. 让学习阶段可以清楚看到每个数据库字段如何进入 Java 持久化对象；
+        2. 保证 UserEntity 字段与 users 表字段逐列对应，避免读取字段遗漏；
+        3. 后续字段增加时，Review 可以直接检查映射是否同步更新。
+        javaType 在当前普通字段映射中不是必须项，MyBatis 通常可以通过 UserEntity 的属性类型自动推断；
+        这里显式声明主要是为了让 Java 侧类型契约更清楚，也便于理解 MyBatis 会据此选择对应 TypeHandler。
+        其中 status 使用 MyBatis 默认枚举映射：UserStatus.ENABLED <-> 数据库字符串 "ENABLED"，
+        UserStatus.DISABLED <-> 数据库字符串 "DISABLED"。因此 users.status 的值必须与枚举常量名完全一致；
+        如果后续改成存储数字、中文、自定义 code 或与枚举名不同的字符串，需要补充自定义 TypeHandler 或显式转换逻辑。
+    -->
+    <resultMap id="UserEntityResultMap" type="com.eventhub.modules.auth.entity.UserEntity">
+        <id property="id" column="id" javaType="java.lang.Long"/>
+        <result property="username" column="username" javaType="java.lang.String"/>
+        <result property="email" column="email" javaType="java.lang.String"/>
+        <result property="passwordHash" column="password_hash" javaType="java.lang.String"/>
+        <result property="status" column="status" javaType="com.eventhub.modules.auth.enums.UserStatus"/>
+        <result property="createdAt" column="created_at" javaType="java.time.LocalDateTime"/>
+        <result property="updatedAt" column="updated_at" javaType="java.time.LocalDateTime"/>
+    </resultMap>
+
+    <sql id="UserColumns">
+        id, username, email, password_hash, status, created_at, updated_at
+    </sql>
+
+    <sql id="UserCriteriaWhere">
+        <where>
+            <if test="criteria.username != null">
+                AND username LIKE CONCAT('%', #{criteria.username}, '%')
+            </if>
+            <if test="criteria.email != null">
+                AND email LIKE CONCAT('%', #{criteria.email}, '%')
+            </if>
+            <if test="criteria.status != null">
+                AND status = #{criteria.status}
+            </if>
+            <if test="criteria.createdAtFrom != null">
+                AND created_at <![CDATA[>=]]> #{criteria.createdAtFrom}
+            </if>
+            <if test="criteria.createdAtTo != null">
+                AND created_at <![CDATA[<=]]> #{criteria.createdAtTo}
+            </if>
+            <if test="criteria.updatedAtFrom != null">
+                AND updated_at <![CDATA[>=]]> #{criteria.updatedAtFrom}
+            </if>
+            <if test="criteria.updatedAtTo != null">
+                AND updated_at <![CDATA[<=]]> #{criteria.updatedAtTo}
+            </if>
+        </where>
+    </sql>
+
+    <select id="existsByUsername" resultType="boolean">
+        SELECT CASE WHEN COUNT(*) > 0 THEN TRUE ELSE FALSE END
+        FROM users
+        WHERE username = #{username}
+    </select>
+
+    <select id="existsByEmail" resultType="boolean">
+        SELECT CASE WHEN COUNT(*) > 0 THEN TRUE ELSE FALSE END
+        FROM users
+        WHERE email = #{email}
+    </select>
+
+    <!--
+        useGeneratedKeys 会读取数据库生成的自增主键，并回填到 UserEntity.id。
+        keyColumn 显式限定回填列为 id，避免不同数据库驱动返回额外 generated keys 时产生歧义。
+        insert 方法只有一个 UserEntity 参数，且 parameterType 指向 UserEntity，因此 SQL 中的
+        #{username}、#{email}、#{passwordHash}、#{status} 会直接从该参数对象读取同名属性。
+        只有当 Mapper 方法写成 @Param("user") UserEntity user 时，XML 才需要使用 #{user.username}
+        这种带参数名的嵌套属性写法，同时 keyProperty 也应改为 user.id。
+    -->
+    <insert id="insert"
+            parameterType="com.eventhub.modules.auth.entity.UserEntity"
+            useGeneratedKeys="true"
+            keyProperty="id"
+            keyColumn="id">
+        INSERT INTO users (username, email, password_hash, status)
+        VALUES (#{username}, #{email}, #{passwordHash}, #{status})
+    </insert>
+
+    <select id="findByUsernameOrEmail" resultMap="UserEntityResultMap">
+        SELECT
+        <include refid="UserColumns"/>
+        FROM users
+        WHERE username = #{usernameOrEmail}
+           OR email = #{usernameOrEmail}
+        LIMIT 1
+    </select>
+
+    <select id="findById" resultMap="UserEntityResultMap">
+        SELECT
+        <include refid="UserColumns"/>
+        FROM users
+        WHERE id = #{userId}
+    </select>
+
+    <select id="countByCriteria" resultType="long">
+        SELECT COUNT(*)
+        FROM users
+        <include refid="UserCriteriaWhere"/>
+    </select>
+
+    <select id="findPage" resultMap="UserEntityResultMap">
+        SELECT
+        <include refid="UserColumns"/>
+        FROM users
+        <include refid="UserCriteriaWhere"/>
+        ORDER BY created_at DESC, id DESC
+        LIMIT #{limit}
+        OFFSET #{offset}
+    </select>
+
+    <update id="updateStatus">
+        UPDATE users
+        SET status = #{status},
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = #{userId}
+    </update>
+</mapper>

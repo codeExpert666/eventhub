@@ -16,7 +16,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.3.2</version>
+        <version>3.5.14</version>
         <!--
             relativePath 置空表示不从当前仓库的相对路径寻找父 POM，而是直接使用 Maven 仓库中的 Spring Boot 父工程。
             这样当前 backend 模块可以作为独立 Spring Boot 应用构建，不依赖仓库根目录必须存在父工程。
@@ -41,12 +41,20 @@
         springdoc 与 flyway 当前显式使用属性管理，便于后续升级时只改一个位置并集中评估兼容性。
     -->
     <properties>
-        <!-- Spring Boot 3.x 要求 Java 17+，这里固定为 17，兼顾现代语言特性与部署环境普遍兼容性。 -->
-        <java.version>17</java.version>
-        <!-- Springdoc 用于生成 OpenAPI 文档和 Swagger UI，独立声明版本避免和业务依赖混在一起。 -->
-        <springdoc.version>2.6.0</springdoc.version>
-        <!-- Flyway 负责数据库迁移，core 与 MySQL 扩展使用同一版本，减少迁移引擎内部模块不一致的风险。 -->
-        <flyway.version>10.10.0</flyway.version>
+        <!-- Java 21 是当前后端编译与运行基线；本地开发、CI 和容器运行时都需要使用 JDK/JRE 21。 -->
+        <java.version>21</java.version>
+        <!-- Springdoc 用于生成 OpenAPI 文档和 Swagger UI，2.8.x 分支兼容 Spring Boot 3.5 / Spring Framework 6.2。 -->
+        <springdoc.version>2.8.17</springdoc.version>
+        <!-- Flyway 负责数据库迁移，11.x 分支与当前 Spring Boot 3.5 依赖组合更匹配。 -->
+        <flyway.version>11.7.2</flyway.version>
+        <!-- JJWT 用于签发与解析阶段 1 的 access token，版本集中声明便于后续安全升级。 -->
+        <jjwt.version>0.12.6</jjwt.version>
+        <!--
+            MyBatis Spring Boot Starter 版本。
+            当前项目使用 Spring Boot 3.5.14 / Java 21，因此选择兼容 Spring Boot 3.x 的 3.0.x 分支；
+            4.x 分支面向 Spring Boot 4.x，不适合当前后端基线。
+        -->
+        <mybatis-spring-boot.version>3.0.5</mybatis-spring-boot.version>
     </properties>
 
     <!--
@@ -84,12 +92,24 @@
         </dependency>
 
         <!--
-            JDBC 数据访问基础依赖。
-            提供 DataSource、事务管理、JdbcTemplate 等能力，适合当前阶段保持数据访问链路清晰可控。
+            Spring Security 认证授权依赖。
+            阶段 1 使用它接入无状态 JWT 鉴权、角色访问控制、401/403 统一处理和密码哈希能力。
         -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-jdbc</artifactId>
+            <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
+
+        <!--
+            MyBatis 数据访问依赖。
+            它会基于 Spring Boot 的 DataSource / 事务管理能力创建 Mapper 代理，
+            让业务服务依赖 Mapper 接口和 XML SQL 映射，而不是直接操作 JdbcTemplate。
+            这种方式既保留 SQL 可见性，也更贴近企业项目中常见的数据访问层组织方式。
+        -->
+        <dependency>
+            <groupId>org.mybatis.spring.boot</groupId>
+            <artifactId>mybatis-spring-boot-starter</artifactId>
+            <version>${mybatis-spring-boot.version}</version>
         </dependency>
 
         <!--
@@ -109,6 +129,32 @@
             <groupId>org.springdoc</groupId>
             <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
             <version>${springdoc.version}</version>
+        </dependency>
+
+        <!--
+            JJWT API 模块。
+            业务代码只直接依赖 API 包，具体签名与 JSON 序列化实现由下方 runtime 依赖在运行期提供。
+        -->
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-api</artifactId>
+            <version>${jjwt.version}</version>
+        </dependency>
+
+        <!-- JJWT 默认实现，负责实际完成 JWT 构建、签名校验和 claims 解析。 -->
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-impl</artifactId>
+            <version>${jjwt.version}</version>
+            <scope>runtime</scope>
+        </dependency>
+
+        <!-- 让 JJWT 复用 Jackson 处理 claims 中的 JSON 数据结构，例如 roles 数组。 -->
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-jackson</artifactId>
+            <version>${jjwt.version}</version>
+            <scope>runtime</scope>
         </dependency>
 
         <!--
@@ -176,9 +222,10 @@
     <!--
         构建配置。
         这里配置的是“源码如何被编译”和“编译后的应用如何被打包”。
-        当前主要包含两个插件：
+        当前主要包含三个插件：
         1. maven-compiler-plugin：负责 Java 源码编译，也负责触发 Lombok 这类注解处理器。
-        2. spring-boot-maven-plugin：负责把普通 Jar 重新打包成可直接启动的 Spring Boot 可执行 Jar。
+        2. maven-surefire-plugin：负责运行测试，并在 Java 21 下显式加载 Mockito agent。
+        3. spring-boot-maven-plugin：负责把普通 Jar 重新打包成可直接启动的 Spring Boot 可执行 Jar。
     -->
     <build>
         <plugins>
@@ -227,6 +274,26 @@
                             <version>${lombok.version}</version>
                         </path>
                     </annotationProcessorPaths>
+                </configuration>
+            </plugin>
+
+            <!--
+                Maven Surefire 测试插件。
+                Spring Boot 测试依赖中的 Mockito 在需要 mock 某些类时会使用 inline mock maker。
+                Java 21 会对运行期动态加载 agent 给出预警；未来 JDK 版本还可能默认禁用这种动态加载。
+
+                这里在测试 JVM 启动时显式把 mockito-core 作为 javaagent 加载：
+                1. 当前 Java 21 测试日志不再出现 Mockito 自附加 agent 的预警；
+                2. 测试运行时的 agent 依赖边界更清楚；
+                3. 后续升级 JDK 时，可以降低 Mockito 动态 attach 策略变化带来的测试失败风险。
+
+                mockito.version 由 Spring Boot starter-parent 管理，避免测试插件配置和实际测试依赖版本漂移。
+            -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <argLine>-javaagent:${settings.localRepository}/org/mockito/mockito-core/${mockito.version}/mockito-core-${mockito.version}.jar</argLine>
                 </configuration>
             </plugin>
 
