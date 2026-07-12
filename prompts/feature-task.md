@@ -40,3 +40,8 @@
    - `docs/ai/design/`
    - `docs/ai/implementation/`
    - 如果有关键取舍，再补 `docs/ai/adr/`
+7. 新增或调整模块传输对象时，必须遵循 `AGENTS.md` 的模块 DTO 组织规则：
+   - 请求放在 `dto/request`，响应放在 `dto/response`
+   - 查询型请求使用 `*QueryRequest`，仍属于 `dto/request`
+   - 不新增模块根部 `vo` 或同级 `dto/query`
+   - 设计文档中列出请求 DTO、响应 DTO 及其包路径
