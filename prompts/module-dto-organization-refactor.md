@@ -115,15 +115,13 @@ String issueAccessToken(Long userId, String sessionId);
 先做结构和编译验证，再运行目标测试与完整测试：
 
 ```bash
-find backend/src/main/java/com/eventhub/modules -type d -name vo
+find src/main/java/com/eventhub/modules -type d -name vo
 rg -n 'com\.eventhub\.modules\..*\.vo|\b(UserInfo|PingInfo|EchoInfo)\b' \
-  backend/src/main backend/src/test README.md docs/roadmap docs/interview
+  src/main src/test README.md docs/roadmap docs/interview
 
-cd backend
 mvn -q -DskipTests compile
 mvn -q -Dtest=SystemControllerTest,AuthIntegrationTest test -Ptest
 mvn -q test -Ptest
-cd ..
 
 git diff --check
 ```

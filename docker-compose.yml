@@ -114,10 +114,10 @@ services:
   # 阶段 0 的验收目标之一是 `docker compose up -d` 后能同时拉起 MySQL、Redis 和应用，
   # 因此这里把 Spring Boot 应用也纳入 Compose 编排，而不是只把 Compose 当成依赖容器清单。
   backend:
-    # 使用 backend/Dockerfile 构建后端镜像。
-    # context 指向 backend 目录后，Dockerfile 中的 COPY pom.xml / COPY src 就会以 backend 为根目录解析。
+    # 使用仓库根目录的 Dockerfile 构建后端镜像。
+    # context 指向仓库根目录后，Dockerfile 中的 COPY pom.xml / COPY src 会直接以项目根目录解析。
     build:
-      context: ./backend
+      context: .
       dockerfile: Dockerfile
 
     # 固定本地容器名，便于通过 docker logs eventhub-backend 查看应用日志。

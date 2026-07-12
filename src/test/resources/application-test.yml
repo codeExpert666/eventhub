@@ -3,7 +3,7 @@
 # 可重复，并尽量减少对开发者本机外部依赖的耦合。
 #
 # 注意：该文件放在 src/test/resources，而不是 src/main/resources。
-# 原因是当前 H2 依赖在 backend/pom.xml 中声明为 test scope，只会进入测试编译和测试运行 classpath。
+# 原因是当前 H2 依赖在根目录 pom.xml 中声明为 test scope，只会进入测试编译和测试运行 classpath。
 # 如果把 test profile 配置放在 main resources，IDEA 会按主运行 classpath 解析 driver-class-name，
 # 从而提示 org.h2.Driver 无法解析；放到 test resources 后，配置文件和 H2 依赖处在同一个测试 classpath 中。
 spring:

@@ -36,30 +36,30 @@
 
 ```text
 eventhub
-├── backend
-│   ├── src
-│   │   ├── main
-│   │   │   ├── java/com/eventhub
-│   │   │   │   ├── EventhubApplication.java
-│   │   │   │   ├── common
-│   │   │   │   │   ├── api（接口返回格式、分页格式、错误码协议相关的通用类）
-│   │   │   │   │   └── exception（全局异常体系）
-│   │   │   │   ├── modules
-│   │   │   │   │   └── system（系统基础能力）
-│   │   │   │   └── infra
-│   │   │   │       ├── openapi（OpenAPI / Swagger 文档配置）
-│   │   │   │       └── logging（日志、审计切面、requestId 注入等技术实现）
-│   │   │   └── resources
-│   │   │       ├── application.yml
-│   │   │       ├── application-dev.yml
-│   │   │       ├── application-prod.yml
-│   │   │       └── db/migration
-│   │   └── test
-│   │       ├── java
-│   │       └── resources
-│   │           └── application-test.yml
-│   ├── Dockerfile
-│   └── pom.xml
+├── src
+│   ├── main
+│   │   ├── java/com/eventhub
+│   │   │   ├── EventhubApplication.java
+│   │   │   ├── common
+│   │   │   │   ├── api（接口返回格式、分页格式、错误码协议相关的通用类）
+│   │   │   │   └── exception（全局异常体系）
+│   │   │   ├── modules
+│   │   │   │   └── system（系统基础能力）
+│   │   │   └── infra
+│   │   │       ├── openapi（OpenAPI / Swagger 文档配置）
+│   │   │       └── logging（日志、审计切面、requestId 注入等技术实现）
+│   │   └── resources
+│   │       ├── application.yml
+│   │       ├── application-dev.yml
+│   │       ├── application-prod.yml
+│   │       └── db/migration
+│   └── test
+│       ├── java
+│       └── resources
+│           └── application-test.yml
+├── Dockerfile
+├── lombok.config
+├── pom.xml
 ├── docs
 │   ├── ai
 │   │   ├── design

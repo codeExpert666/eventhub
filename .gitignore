@@ -1,15 +1,15 @@
 .DS_Store
 .idea/
 .vscode/
-backend/target/
+/target/
 
 # LazyVim 的 Java LSP 通常基于 Eclipse JDT Language Server。
 # 打开 Maven/Java 项目时，JDTLS 可能会在模块目录下生成这些 Eclipse/JDT 元数据文件。
 # 它们属于本地编辑器/语言服务器工作产物，不是项目源码或构建输入，避免提交到仓库。
-backend/.classpath
-backend/.factorypath
-backend/.project
-backend/.settings/
+/.classpath
+/.factorypath
+/.project
+/.settings/
 
 # CodeGraph local index
 .codegraph/

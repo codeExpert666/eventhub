@@ -6,7 +6,7 @@
 
 ## 当前能力
 
-- `backend/` Spring Boot 单体后端基础工程
+- 仓库根目录下的 Spring Boot 单体后端基础工程
 - 统一响应体
 - 统一异常处理
 - 参数校验
@@ -20,32 +20,32 @@
 ## 目录说明
 
 ```text
-backend/
-  ├── Dockerfile
-  ├── pom.xml
-  ├── src/main/java/com/eventhub
-  │   ├── common
-  │   │   ├── api
-  │   │   └── exception
-  │   ├── infra
-  │   │   ├── logging
-  │   │   └── openapi
-  │   └── modules/system
-  │       ├── controller
-  │       ├── dto/request
-  │       ├── dto/response
-  │       └── service
-  ├── src/main/resources
-  │   ├── application*.yml
-  │   ├── db/migration
-  │   └── logback-spring.xml
-  └── src/test
-docs/
-  └── ai
-      ├── design
-      ├── implementation
-      └── adr
-docker-compose.yml
+eventhub/
+├── Dockerfile
+├── lombok.config
+├── pom.xml
+├── src/main/java/com/eventhub
+│   ├── common
+│   │   ├── api
+│   │   └── exception
+│   ├── infra
+│   │   ├── logging
+│   │   └── openapi
+│   └── modules/system
+│       ├── controller
+│       ├── dto/request
+│       ├── dto/response
+│       └── service
+├── src/main/resources
+│   ├── application*.yml
+│   ├── db/migration
+│   └── logback-spring.xml
+├── src/test
+├── docs/ai
+│   ├── design
+│   ├── implementation
+│   └── adr
+└── docker-compose.yml
 ```
 
 ## 本地启动
@@ -81,7 +81,6 @@ docker compose up -d mysql redis
 再启动后端：
 
 ```bash
-cd backend
 mvn spring-boot:run -Pdev
 ```
 
@@ -90,7 +89,6 @@ mvn spring-boot:run -Pdev
 常用 Maven profile：
 
 ```bash
-cd backend
 mvn spring-boot:run -Pdev
 mvn test -Ptest
 mvn package -Pprod
@@ -99,7 +97,6 @@ mvn package -Pprod
 ## 测试
 
 ```bash
-cd backend
 mvn test -Ptest
 ```
 

@@ -1,0 +1,7 @@
+.git/
+.codegraph/
+.codex/
+.idea/
+.vscode/
+target/
+.DS_Store
