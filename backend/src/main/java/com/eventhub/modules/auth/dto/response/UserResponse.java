@@ -1,4 +1,4 @@
-package com.eventhub.modules.auth.vo;
+package com.eventhub.modules.auth.dto.response;
 
 import java.util.List;
 
@@ -17,7 +17,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
  * @param roles    用户角色编码集合
  */
 @Schema(description = "用户摘要")
-public record UserInfo(
+public record UserResponse(
         @Schema(description = "用户 ID", example = "1")
         Long id,
 
@@ -33,7 +33,7 @@ public record UserInfo(
         @Schema(description = "角色编码集合", example = "[\"USER\"]")
         List<String> roles
 ) {
-    public UserInfo {
+    public UserResponse {
         roles = roles == null ? List.of() : List.copyOf(roles);
     }
 }

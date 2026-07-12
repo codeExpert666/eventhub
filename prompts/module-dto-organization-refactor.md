@@ -8,7 +8,7 @@
 2. `.agents/skills/backend-design-first/SKILL.md`
 3. `docs/ai/design/2026-07-12-module-dto-organization-design.md`
 4. `docs/ai/adr/2026-07-12-module-dto-organization-convention.md`
-5. `docs/ai/implementation/2026-07-12-module-dto-organization-governance-implementation.md`
+5. `docs/ai/implementation/2026-07-12-module-dto-organization-implementation.md`
 6. `docs/templates/implementation-note-template.md`
 
 读取后先用简短摘要说明你理解的目标、范围、风险和执行顺序；如果仓库现状没有与基线发生实质冲突，直接继续实现，不要再次停下来等待方案确认。
@@ -106,9 +106,9 @@ String issueAccessToken(Long userId, String sessionId);
 - “DTO/VO”统一改为语义准确的“请求/响应 DTO”。
 - 当前类型引用同步使用 `UserResponse`、`PingResponse`、`EchoResponse`。
 - 不对 `docs/ai/design`、`docs/ai/implementation`、`docs/ai/adr` 中的历史文档做无差别全局替换；它们应保留当时的实现事实，由 2026-07-12 ADR 声明约定演进。
-- 新增代码迁移实现说明：
-  - `docs/ai/implementation/2026-07-12-module-dto-organization-refactor-implementation.md`
-- 实现说明必须遵循模板并明确区分：2026-07-12 的 governance implementation 只完成规则落地，本次才完成 Java 代码迁移。
+- 新增或更新最终实现说明：
+  - `docs/ai/implementation/2026-07-12-module-dto-organization-implementation.md`
+- 实现说明必须遵循模板，并分别记录规则治理和 Java 代码迁移两个实施阶段，最终只保留这一份实现说明。
 
 ## 验证要求
 

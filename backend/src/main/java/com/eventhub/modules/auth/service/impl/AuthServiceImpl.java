@@ -4,6 +4,9 @@ import com.eventhub.common.api.PageRequest;
 import com.eventhub.common.api.PageResponse;
 import com.eventhub.infra.security.principal.AuthenticatedPrincipal;
 import com.eventhub.modules.auth.dto.request.*;
+import com.eventhub.modules.auth.dto.response.LoginResponse;
+import com.eventhub.modules.auth.dto.response.TokenPairResponse;
+import com.eventhub.modules.auth.dto.response.UserResponse;
 import com.eventhub.modules.auth.entity.AuthSessionEntity;
 import com.eventhub.modules.auth.entity.RoleEntity;
 import com.eventhub.modules.auth.entity.UserEntity;
@@ -18,9 +21,6 @@ import com.eventhub.modules.auth.service.AuthService;
 import com.eventhub.modules.auth.service.AuthSessionService;
 import com.eventhub.modules.auth.service.RefreshTokenParser;
 import com.eventhub.modules.auth.service.TokenService;
-import com.eventhub.modules.auth.vo.LoginResponse;
-import com.eventhub.modules.auth.vo.TokenPairResponse;
-import com.eventhub.modules.auth.vo.UserInfo;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -69,7 +69,7 @@ public class AuthServiceImpl implements AuthService {
      */
     @Override
     @Transactional
-    public UserInfo register(RegisterRequest request) {
+    public UserResponse register(RegisterRequest request) {
         String username = normalizeUsername(request.username());
         String email = normalizeEmail(request.email());
 
@@ -102,7 +102,7 @@ public class AuthServiceImpl implements AuthService {
             if (roleBindingRows != 1) {
                 throw new IllegalStateException("Failed to bind default USER role");
             }
-            return getUserInfo(userId);
+            return getUserResponse(userId);
         } catch (DuplicateKeyException exception) {
             /*
              * 并发注册时，两个请求可能同时通过 exists 预检查。
@@ -149,9 +149,9 @@ public class AuthServiceImpl implements AuthService {
 
         /*
          * 登录响应和 token 只需要用户摘要信息。
-         * 这里先转换为 UserInfo，避免 passwordHash 等持久化内部字段越过 service 边界。
+         * 这里先转换为 UserResponse，避免 passwordHash 等持久化内部字段越过 service 边界。
          */
-        UserInfo userInfo = toUserInfo(user);
+        UserResponse userResponse = toUserResponse(user);
 
         /*
          * 每次登录创建独立服务端会话：
@@ -170,7 +170,7 @@ public class AuthServiceImpl implements AuthService {
          * 如果服务端会话没有成功落库，就不应该把已经关联该 sessionId 的 token 返回给客户端。
          */
         authSessionService.createActiveSession(
-                userInfo.id(),
+                userResponse.id(),
                 sessionId,
                 refreshToken,
                 issuedAt,
@@ -182,13 +182,13 @@ public class AuthServiceImpl implements AuthService {
          * refresh token 本身不放入 access token，只通过响应体返回给客户端保存。
          */
         return new LoginResponse(
-                tokenService.issueAccessToken(userInfo, sessionId),
+                tokenService.issueAccessToken(userResponse.id(), sessionId),
                 refreshToken,
                 AUTHORIZATION_SCHEME_BEARER,
                 tokenService.accessTokenTtlSeconds(),
                 refreshExpiresIn,
                 sessionId,
-                userInfo
+                userResponse
         );
     }
 
@@ -244,7 +244,7 @@ public class AuthServiceImpl implements AuthService {
             throw AuthException.invalidRefreshToken();
         }
 
-        UserInfo userInfo = toUserInfo(user);
+        UserResponse userResponse = toUserResponse(user);
         String newRefreshToken = tokenService.issueRefreshToken();
         long refreshExpiresIn = tokenService.refreshTokenTtlSeconds();
         LocalDateTime newRefreshExpiresAt = refreshedAt.plusSeconds(refreshExpiresIn);
@@ -266,13 +266,13 @@ public class AuthServiceImpl implements AuthService {
 
         // 轮换成功后才签发新的 access token，确保响应中的 token pair 与服务端会话状态一致。
         return new TokenPairResponse(
-                tokenService.issueAccessToken(userInfo, session.getSessionId()),
+                tokenService.issueAccessToken(userResponse.id(), session.getSessionId()),
                 newRefreshToken,
                 AUTHORIZATION_SCHEME_BEARER,
                 tokenService.accessTokenTtlSeconds(),
                 refreshExpiresIn,
                 session.getSessionId(),
-                userInfo
+                userResponse
         );
     }
 
@@ -295,14 +295,14 @@ public class AuthServiceImpl implements AuthService {
 
     /**
      * 根据认证上下文返回当前用户。
-     * 安全上下文只保存最小主体信息，接口响应需要回到 auth 模块查询最新用户资料并组装 UserInfo。
+     * 安全上下文只保存最小主体信息，接口响应需要回到 auth 模块查询最新用户资料并组装 UserResponse。
      *
      * @param principal SecurityContext 中的当前认证主体
      * @return 用户摘要
      */
     @Override
-    public UserInfo currentUser(AuthenticatedPrincipal principal) {
-        return getUserInfo(principal.userId());
+    public UserResponse currentUser(AuthenticatedPrincipal principal) {
+        return getUserResponse(principal.userId());
     }
 
     /**
@@ -314,7 +314,7 @@ public class AuthServiceImpl implements AuthService {
      * @return 用户摘要分页结果
      */
     @Override
-    public PageResponse<UserInfo> listUsers(AdminUserQueryRequest request) {
+    public PageResponse<UserResponse> listUsers(AdminUserQueryRequest request) {
         // Web 入口的 @ModelAttribute 正常会创建非 null 查询对象；这里仍显式校验，
         // 是为了约束 service 层契约，避免绕过 Controller 直接传 null 时产生语义不清的 NPE。
         Objects.requireNonNull(request, "request must not be null");
@@ -324,20 +324,20 @@ public class AuthServiceImpl implements AuthService {
         if (total == 0) {
             /*
              * List.of() 的零参数版本返回一个不可变空列表，元素类型不是由空列表本身决定的，
-             * 而是由当前调用上下文推断出来的。这里 PageResponse.of 需要 List<UserInfo>，
-             * 因此编译器会把 List.of() 推断为 List<UserInfo>。
+             * 而是由当前调用上下文推断出来的。这里 PageResponse.of 需要 List<UserResponse>，
+             * 因此编译器会把 List.of() 推断为 List<UserResponse>。
              *
-             * 需要注意：Java 泛型存在类型擦除，UserInfo 这个泛型参数主要用于编译期类型检查；
-             * 运行时这个空 List 对象本身并不会保存“元素类型是 UserInfo”的信息。
+             * 需要注意：Java 泛型存在类型擦除，UserResponse 这个泛型参数主要用于编译期类型检查；
+             * 运行时这个空 List 对象本身并不会保存“元素类型是 UserResponse”的信息。
              */
             return PageResponse.of(List.of(), pageRequest, total);
         }
 
         List<UserEntity> userEntities = userMapper.findPage(criteria, pageRequest.size(), pageRequest.offset());
         Map<Long, List<String>> rolesByUserId = findRolesByUserIds(userEntities);
-        List<UserInfo> users = userEntities
+        List<UserResponse> users = userEntities
                 .stream()
-                .map(user -> toUserInfo(user, rolesByUserId.getOrDefault(user.getId(), List.of())))
+                .map(user -> toUserResponse(user, rolesByUserId.getOrDefault(user.getId(), List.of())))
                 .toList();
         return PageResponse.of(users, pageRequest, total);
     }
@@ -358,26 +358,26 @@ public class AuthServiceImpl implements AuthService {
      */
     @Override
     @Transactional
-    public UserInfo updateStatus(Long userId, UpdateUserStatusRequest request) {
+    public UserResponse updateStatus(Long userId, UpdateUserStatusRequest request) {
         int affectedRows = userMapper.updateStatus(userId, request.status());
         if (affectedRows == 0) {
             throw AuthException.userNotFound();
         }
-        return getUserInfo(userId);
+        return getUserResponse(userId);
     }
 
-    private UserInfo getUserInfo(Long userId) {
+    private UserResponse getUserResponse(Long userId) {
         UserEntity user = userMapper.findById(userId)
                 .orElseThrow(AuthException::userNotFound);
-        return toUserInfo(user);
+        return toUserResponse(user);
     }
 
-    private UserInfo toUserInfo(UserEntity user) {
-        return toUserInfo(user, roleMapper.findRoleCodesByUserId(user.getId()));
+    private UserResponse toUserResponse(UserEntity user) {
+        return toUserResponse(user, roleMapper.findRoleCodesByUserId(user.getId()));
     }
 
-    private UserInfo toUserInfo(UserEntity user, List<String> roles) {
-        return new UserInfo(
+    private UserResponse toUserResponse(UserEntity user, List<String> roles) {
+        return new UserResponse(
                 user.getId(),
                 user.getUsername(),
                 user.getEmail(),

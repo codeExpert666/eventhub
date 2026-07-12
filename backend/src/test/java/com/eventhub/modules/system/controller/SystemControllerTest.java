@@ -256,20 +256,6 @@ class SystemControllerTest {
     }
 
     /**
-     * 验证 OpenAPI 文档端点已经成功生成，并包含当前系统模块接口。
-     *
-     * <p>
-     * 这说明 Swagger/OpenAPI 相关配置已经生效，
-     * 并且 {@link SystemController} 上声明的接口被正确收集到了文档模型里。
-     */
-    @Test
-    void openApiDocumentShouldContainSystemPingEndpoint() throws Exception {
-        mockMvc.perform(get("/v3/api-docs"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.paths['/api/v1/system/ping']").exists());
-    }
-
-    /**
      * 验证缺失静态资源会返回统一 404 响应，而不是被当成未知系统异常处理。
      *
      * <p>

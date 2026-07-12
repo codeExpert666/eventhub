@@ -55,6 +55,7 @@ com.eventhub
 └── modules.auth
     ├── controller
     ├── dto/request
+    ├── dto/response
     ├── entity
     ├── enums
     ├── exception
@@ -63,8 +64,7 @@ com.eventhub
     ├── mapper/result
     ├── security
     ├── service
-    ├── service/impl
-    └── vo
+    └── service/impl
 ```
 
 关键边界：
@@ -203,7 +203,7 @@ PATCH /api/v1/admin/users/{userId}/status
   -> 插入 users 并校验影响行数和主键回填
   -> 查询默认 USER 角色
   -> 插入 user_roles 并校验影响行数为 1
-  -> 查询并返回 UserInfo
+  -> 查询并返回 UserResponse
 ```
 
 登录流程：
@@ -212,7 +212,7 @@ PATCH /api/v1/admin/users/{userId}/status
 按 usernameOrEmail 查询用户
   -> 不存在或密码错误统一返回 bad credentials
   -> 校验用户状态必须是 ENABLED
-  -> 查询用户角色并组装 UserInfo
+  -> 查询用户角色并组装 UserResponse
   -> TokenService 签发 access token
   -> 返回 token 与用户摘要
 ```
@@ -235,7 +235,7 @@ JWT 认证流程：
 GET /api/v1/me
   -> SecurityUtils 读取 AuthenticatedPrincipal
   -> AuthService 根据 userId 回查最新用户资料
-  -> 返回 UserInfo，不暴露 passwordHash
+  -> 返回 UserResponse，不暴露 passwordHash
 ```
 
 管理员用户列表流程：
@@ -249,7 +249,7 @@ GET /api/v1/admin/users
   -> COUNT 查询总数
   -> LIMIT/OFFSET 查询当前页用户
   -> 批量查询当前页用户角色，避免 N+1
-  -> 返回 PageResponse<UserInfo>
+  -> 返回 PageResponse<UserResponse>
 ```
 
 ## 7. JWT 与 RBAC 设计

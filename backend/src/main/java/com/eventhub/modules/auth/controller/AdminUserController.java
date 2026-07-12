@@ -14,8 +14,8 @@ import com.eventhub.common.api.ApiResponse;
 import com.eventhub.common.api.PageResponse;
 import com.eventhub.modules.auth.dto.request.AdminUserQueryRequest;
 import com.eventhub.modules.auth.dto.request.UpdateUserStatusRequest;
+import com.eventhub.modules.auth.dto.response.UserResponse;
 import com.eventhub.modules.auth.service.AuthService;
-import com.eventhub.modules.auth.vo.UserInfo;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -50,7 +50,7 @@ public class AdminUserController {
      */
     @Operation(summary = "分页查询用户列表", description = "管理员分页查看平台用户列表")
     @GetMapping
-    public ApiResponse<PageResponse<UserInfo>> listUsers(@Valid @ModelAttribute AdminUserQueryRequest request) {
+    public ApiResponse<PageResponse<UserResponse>> listUsers(@Valid @ModelAttribute AdminUserQueryRequest request) {
         return ApiResponse.success(authService.listUsers(request));
     }
 
@@ -63,7 +63,7 @@ public class AdminUserController {
      */
     @Operation(summary = "更新用户状态", description = "管理员启用或禁用用户")
     @PatchMapping("/{userId}/status")
-    public ApiResponse<UserInfo> updateStatus(
+    public ApiResponse<UserResponse> updateStatus(
             @PathVariable Long userId,
             @Valid @RequestBody UpdateUserStatusRequest request) {
         return ApiResponse.success(authService.updateStatus(userId, request));

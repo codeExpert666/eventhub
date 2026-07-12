@@ -1,10 +1,11 @@
-package com.eventhub.modules.auth.vo;
+package com.eventhub.modules.auth.dto.response;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 
 /**
- * token pair 响应。
- * 用于 refresh 成功后返回新的 access token 与 refresh token，字段命名与登录响应保持一致。
+ * 登录成功响应。
+ * accessToken 是后续访问受保护接口的凭证，调用方需要放入 Authorization Bearer 请求头。
+ * refreshToken 是长期续期凭证，只在登录响应中明文返回一次，服务端只保存哈希。
  *
  * @param accessToken         JWT access token
  * @param refreshToken        opaque refresh token
@@ -12,10 +13,10 @@ import io.swagger.v3.oas.annotations.media.Schema;
  * @param expiresIn           access token 有效秒数
  * @param refreshExpiresIn    refresh token 有效秒数
  * @param sessionId           服务端认证会话标识
- * @param user                当前用户摘要
+ * @param user                当前登录用户摘要
  */
-@Schema(description = "token pair 响应")
-public record TokenPairResponse(
+@Schema(description = "登录成功响应")
+public record LoginResponse(
         @Schema(description = "JWT access token")
         String accessToken,
 
@@ -34,7 +35,7 @@ public record TokenPairResponse(
         @Schema(description = "服务端认证会话标识")
         String sessionId,
 
-        @Schema(description = "当前用户")
-        UserInfo user
+        @Schema(description = "当前登录用户")
+        UserResponse user
 ) {
 }

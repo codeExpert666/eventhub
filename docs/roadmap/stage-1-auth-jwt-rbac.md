@@ -115,8 +115,7 @@ modules/auth
 ├── entity
 ├── dto
 │   ├── request
-│   └── query
-├── vo
+│   └── response
 ├── converter
 ├── enums
 └── exception

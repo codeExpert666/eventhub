@@ -1,7 +1,5 @@
 package com.eventhub.modules.auth.service;
 
-import com.eventhub.modules.auth.vo.UserInfo;
-
 /**
  * auth 模块内的 token 业务语义服务。
  *
@@ -15,11 +13,11 @@ public interface TokenService {
     /**
      * 为登录成功的用户签发 access token。
      *
-     * @param userInfo  登录成功后的用户摘要
+     * @param userId    用户主键
      * @param sessionId 服务端认证会话标识
      * @return access token
      */
-    String issueAccessToken(UserInfo userInfo, String sessionId);
+    String issueAccessToken(Long userId, String sessionId);
 
     /**
      * 生成 opaque refresh token。

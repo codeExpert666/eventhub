@@ -84,8 +84,7 @@ modules/system
 ├── entity
 ├── dto
 │   ├── request
-│   └── query
-├── vo
+│   └── response
 ├── converter
 ├── enums
 └── exception

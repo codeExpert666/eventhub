@@ -4,7 +4,6 @@ import com.eventhub.infra.security.config.AuthTokenProperties;
 import com.eventhub.infra.security.jwt.JwtClaims;
 import com.eventhub.infra.security.jwt.JwtCodec;
 import com.eventhub.modules.auth.service.TokenService;
-import com.eventhub.modules.auth.vo.UserInfo;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -16,9 +15,8 @@ import java.util.UUID;
  * token 业务语义服务实现。
  *
  * <p>
- * 当前阶段 access token 只写入最小认证声明和服务端会话标识。
- * 即使 {@link UserInfo} 中包含用户名、邮箱、状态和角色，这些字段也不会被写入 JWT，
- * 因为最终用户状态和权限必须在每次请求时重新加载最新数据。
+ * 当前阶段 access token 只接收用户主键和服务端会话标识，并写入最小认证声明。
+ * 用户名、邮箱、状态和角色不会进入 token 签发边界，最终用户状态和权限仍在每次请求时重新加载最新数据。
  * </p>
  */
 @Service
@@ -32,9 +30,9 @@ public class TokenServiceImpl implements TokenService {
     private final SecureRandom secureRandom = new SecureRandom();
 
     @Override
-    public String issueAccessToken(UserInfo userInfo, String sessionId) {
+    public String issueAccessToken(Long userId, String sessionId) {
         return jwtCodec.generateAccessToken(new JwtClaims(
-                userInfo.id(),
+                userId,
                 UUID.randomUUID().toString(),
                 sessionId,
                 JwtClaims.ACCESS_TOKEN_TYPE

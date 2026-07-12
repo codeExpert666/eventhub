@@ -8,9 +8,9 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.eventhub.common.api.ApiResponse;
 import com.eventhub.modules.system.dto.request.EchoRequest;
+import com.eventhub.modules.system.dto.response.EchoResponse;
+import com.eventhub.modules.system.dto.response.PingResponse;
 import com.eventhub.modules.system.service.SystemService;
-import com.eventhub.modules.system.vo.EchoInfo;
-import com.eventhub.modules.system.vo.PingInfo;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -64,7 +64,7 @@ public class SystemController {
      */
     @Operation(summary = "系统探活", description = "验证应用启动、统一响应体和基础服务信息")
     @GetMapping("/ping")
-    public ApiResponse<PingInfo> ping() {
+    public ApiResponse<PingResponse> ping() {
         return ApiResponse.success(systemService.ping());
     }
 
@@ -85,7 +85,7 @@ public class SystemController {
      */
     @Operation(summary = "回显示例", description = "验证请求体校验和统一异常处理")
     @PostMapping("/echo")
-    public ApiResponse<EchoInfo> echo(@Valid @RequestBody EchoRequest request) {
+    public ApiResponse<EchoResponse> echo(@Valid @RequestBody EchoRequest request) {
         return ApiResponse.success(systemService.echo(request));
     }
 }

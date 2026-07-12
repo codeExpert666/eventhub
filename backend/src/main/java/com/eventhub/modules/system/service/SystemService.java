@@ -1,8 +1,8 @@
 package com.eventhub.modules.system.service;
 
 import com.eventhub.modules.system.dto.request.EchoRequest;
-import com.eventhub.modules.system.vo.EchoInfo;
-import com.eventhub.modules.system.vo.PingInfo;
+import com.eventhub.modules.system.dto.response.EchoResponse;
+import com.eventhub.modules.system.dto.response.PingResponse;
 import java.time.OffsetDateTime;
 import java.util.Arrays;
 import java.util.List;
@@ -52,8 +52,8 @@ public class SystemService {
      *
      * @return 系统探活信息
      */
-    public PingInfo ping() {
-        return new PingInfo(
+    public PingResponse ping() {
+        return new PingResponse(
                 environment.getProperty("spring.application.name", "eventhub-backend"),
                 resolveActiveProfiles(),
                 OffsetDateTime.now());
@@ -67,8 +67,8 @@ public class SystemService {
      * @param request 回显请求参数
      * @return 回显结果对象
      */
-    public EchoInfo echo(EchoRequest request) {
-        return new EchoInfo(request.message(), request.tag(), OffsetDateTime.now());
+    public EchoResponse echo(EchoRequest request) {
+        return new EchoResponse(request.message(), request.tag(), OffsetDateTime.now());
     }
 
     /**

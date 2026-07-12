@@ -1,6 +1,6 @@
 # 模块传输 DTO 组织规范与现有代码迁移设计
 
-> 状态：设计已批准，项目规则已落地，Java 代码迁移待后续任务实施。
+> 状态：设计已批准并完成实施；项目规则、Java 代码迁移、测试验证和当前状态文档同步均已落地。
 
 ## 1. 背景
 
@@ -32,7 +32,7 @@ modules/<module>/dto
 成功标准：
 
 - 规则层面：`AGENTS.md`、ADR、设计文档和通用任务提示词使用同一套术语和判断标准。
-- 后续代码迁移完成后：`backend/src/main/java/com/eventhub/modules` 下不存在用于响应模型的 `vo` 包，也不存在同级 `dto/query` 包。
+- 代码迁移完成后（已达成）：`backend/src/main/java/com/eventhub/modules` 下不存在用于响应模型的 `vo` 包，也不存在同级 `dto/query` 包。
 - 请求和响应类型能够仅根据包路径和类型后缀判断传输方向。
 - API 路径、HTTP 方法、JSON 字段、错误码和业务行为保持不变。
 
@@ -48,7 +48,7 @@ modules/<module>/dto
 
 ## 4. 影响范围
 
-### 4.1 当前待迁移代码
+### 4.1 已完成的代码迁移
 
 - `modules.auth`
   - `vo.LoginResponse` -> `dto.response.LoginResponse`
@@ -67,8 +67,8 @@ modules/<module>/dto
 - `AGENTS.md`：新增强制模块传输对象组织规则。
 - `prompts/feature-task.md`：新增开发阶段 DTO 组织要求。
 - `prompts/review-task.md`：新增 DTO 包结构和边界泄漏检查项。
-- 新增本设计、配套 ADR、规则落地实现说明和专用代码迁移提示词。
-- 代码迁移任务完成后，再更新 README、路线图和 `docs/interview` 中描述当前代码结构的内容。
+- 新增本设计、配套 ADR、统一实现说明和专用代码迁移提示词。
+- Java 迁移完成后，README、路线图和 `docs/interview` 中描述当前代码结构的内容已同步更新。
 
 ### 4.3 不受影响的资源
 
@@ -103,7 +103,7 @@ modules/<module>/dto
 本次工程决策状态流转为：
 
 ```text
-方案审视 -> 用户批准 -> 规则与 ADR 生效 -> Java 迁移待执行 -> 测试验证 -> 现状文档同步
+方案审视 -> 用户批准 -> 规则与 ADR 生效 -> Java 迁移完成 -> 测试验证完成 -> 现状文档同步完成
 ```
 
 ## 6. API 设计
@@ -131,7 +131,7 @@ modules/<module>/dto
 
 ## 8. 关键流程
 
-### 8.1 后续代码迁移正常流程
+### 8.1 代码迁移执行流程（已完成）
 
 1. 读取 `AGENTS.md`、本设计和配套 ADR，确认设计基线已冻结。
 2. 盘点 `auth`、`system` 中全部 `vo` 类型及其调用方。

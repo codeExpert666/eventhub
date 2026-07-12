@@ -1,16 +1,16 @@
-package com.eventhub.modules.system.vo;
+package com.eventhub.modules.system.dto.response;
 
 import java.time.OffsetDateTime;
 
 /**
- * 回显示例接口返回对象。
+ * 回显示例接口响应。
  * 该对象用于承载 {@code /api/v1/system/echo} 接口的响应数据，
  * 主要目的是把客户端提交的消息内容按统一结构返回出来，
  * 从而帮助开发者验证请求体绑定、参数校验、服务层处理和统一响应封装链路是否正常。
  *
  * <p>
  * 这里使用 Java {@code record}，
- * 是因为它本质上属于简单、只读的返回模型，不承担领域行为或复杂状态变更职责。
+ * 是因为它本质上属于简单、只读的响应模型，不承担领域行为或复杂状态变更职责。
  * 对于这类“只负责承载数据”的对象，{@code record} 能更直接表达不可变语义，
  * 也能避免引入冗余的样板代码。
  *
@@ -19,7 +19,7 @@ import java.time.OffsetDateTime;
  * @param echoedAt 服务端生成回显结果的时间，
  *                 用于表明该响应是由服务端在本次请求处理中实时生成的
  */
-public record EchoInfo(
+public record EchoResponse(
         String message,
         String tag,
         OffsetDateTime echoedAt) {

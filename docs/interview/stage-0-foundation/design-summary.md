@@ -51,8 +51,8 @@ com.eventhub
     └── system
         ├── controller
         ├── dto/request
-        ├── service
-        └── vo
+        ├── dto/response
+        └── service
 ```
 
 这个分层体现了一个约束：业务模块只处理业务入口和业务逻辑，统一协议、异常处理、日志追踪、OpenAPI 等横切能力放在 `common` 和 `infra`。

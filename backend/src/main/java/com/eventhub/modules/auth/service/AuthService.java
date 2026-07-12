@@ -7,9 +7,9 @@ import com.eventhub.modules.auth.dto.request.LoginRequest;
 import com.eventhub.modules.auth.dto.request.RefreshTokenRequest;
 import com.eventhub.modules.auth.dto.request.RegisterRequest;
 import com.eventhub.modules.auth.dto.request.UpdateUserStatusRequest;
-import com.eventhub.modules.auth.vo.LoginResponse;
-import com.eventhub.modules.auth.vo.TokenPairResponse;
-import com.eventhub.modules.auth.vo.UserInfo;
+import com.eventhub.modules.auth.dto.response.LoginResponse;
+import com.eventhub.modules.auth.dto.response.TokenPairResponse;
+import com.eventhub.modules.auth.dto.response.UserResponse;
 
 /**
  * 认证授权应用服务接口。
@@ -27,7 +27,7 @@ public interface AuthService {
      * @param request 注册请求
      * @return 注册后的用户摘要
      */
-    UserInfo register(RegisterRequest request);
+    UserResponse register(RegisterRequest request);
 
     /**
      * 用户登录。
@@ -58,7 +58,7 @@ public interface AuthService {
      * @param principal 当前认证主体
      * @return 当前用户摘要
      */
-    UserInfo currentUser(AuthenticatedPrincipal principal);
+    UserResponse currentUser(AuthenticatedPrincipal principal);
 
     /**
      * 分页查询用户。
@@ -66,7 +66,7 @@ public interface AuthService {
      * @param request 分页与筛选查询参数
      * @return 用户摘要分页结果
      */
-    PageResponse<UserInfo> listUsers(AdminUserQueryRequest request);
+    PageResponse<UserResponse> listUsers(AdminUserQueryRequest request);
 
     /**
      * 管理员更新用户状态。
@@ -75,5 +75,5 @@ public interface AuthService {
      * @param request 状态更新请求
      * @return 更新后的用户摘要
      */
-    UserInfo updateStatus(Long userId, UpdateUserStatusRequest request);
+    UserResponse updateStatus(Long userId, UpdateUserStatusRequest request);
 }

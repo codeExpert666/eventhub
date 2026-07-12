@@ -10,10 +10,10 @@ import com.eventhub.infra.security.support.SecurityUtils;
 import com.eventhub.modules.auth.dto.request.LoginRequest;
 import com.eventhub.modules.auth.dto.request.RefreshTokenRequest;
 import com.eventhub.modules.auth.dto.request.RegisterRequest;
+import com.eventhub.modules.auth.dto.response.LoginResponse;
+import com.eventhub.modules.auth.dto.response.TokenPairResponse;
+import com.eventhub.modules.auth.dto.response.UserResponse;
 import com.eventhub.modules.auth.service.AuthService;
-import com.eventhub.modules.auth.vo.LoginResponse;
-import com.eventhub.modules.auth.vo.TokenPairResponse;
-import com.eventhub.modules.auth.vo.UserInfo;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -46,7 +46,7 @@ public class AuthController {
      */
     @Operation(summary = "用户注册", description = "创建普通用户并绑定 USER 角色")
     @PostMapping("/register")
-    public ApiResponse<UserInfo> register(@Valid @RequestBody RegisterRequest request) {
+    public ApiResponse<UserResponse> register(@Valid @RequestBody RegisterRequest request) {
         return ApiResponse.success(authService.register(request));
     }
 

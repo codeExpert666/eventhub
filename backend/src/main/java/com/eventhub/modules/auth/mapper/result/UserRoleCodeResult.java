@@ -9,7 +9,7 @@ import lombok.Setter;
  *
  * <p>
  * 该对象不是领域实体，只承接 user_roles 与 roles JOIN 后的扁平结果，
- * 供服务层按 userId 分组后组装 UserInfo.roles。
+ * 供服务层按 userId 分组后组装 UserResponse.roles。
  * </p>
  */
 @Getter

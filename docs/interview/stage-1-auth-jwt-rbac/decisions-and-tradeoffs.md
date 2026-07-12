@@ -191,7 +191,7 @@
 
 ## 10. 管理员用户列表从 findAll 演进为分页筛选
 
-决策：`GET /api/v1/admin/users` 返回 `PageResponse<UserInfo>`，支持分页、筛选、新注册用户优先排序和角色批量查询。
+决策：`GET /api/v1/admin/users` 返回 `PageResponse<UserResponse>`，支持分页、筛选、新注册用户优先排序和角色批量查询。
 
 原因：
 

@@ -33,8 +33,8 @@ backend/
   │   └── modules/system
   │       ├── controller
   │       ├── dto/request
-  │       ├── service
-  │       └── vo
+  │       ├── dto/response
+  │       └── service
   ├── src/main/resources
   │   ├── application*.yml
   │   ├── db/migration

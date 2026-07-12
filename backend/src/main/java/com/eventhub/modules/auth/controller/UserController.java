@@ -6,8 +6,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.eventhub.common.api.ApiResponse;
 import com.eventhub.infra.security.support.SecurityUtils;
+import com.eventhub.modules.auth.dto.response.UserResponse;
 import com.eventhub.modules.auth.service.AuthService;
-import com.eventhub.modules.auth.vo.UserInfo;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -32,7 +32,7 @@ public class UserController {
      */
     @Operation(summary = "获取当前用户", description = "根据 Bearer token 返回当前登录用户信息")
     @GetMapping("/me")
-    public ApiResponse<UserInfo> me() {
+    public ApiResponse<UserResponse> me() {
         return ApiResponse.success(authService.currentUser(SecurityUtils.getRequiredCurrentPrincipal()));
     }
 }
