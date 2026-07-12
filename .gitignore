@@ -2,3 +2,6 @@
 .idea/
 .vscode/
 backend/target/
+
+# CodeGraph local index
+.codegraph/
